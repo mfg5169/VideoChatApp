@@ -4,7 +4,8 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build:css": "tailwindcss -c tailwind.config.js -i ./src/input.css -o ./tailwind.css"
   },
   "keywords": [],
   "author": "",
