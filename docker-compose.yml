@@ -1,0 +1,15 @@
+
+
+services:
+  videochat:
+    build: .
+    container_name: videochat
+    #user: user
+    working_dir: /home/user   
+    network_mode: "host"       
+    volumes:
+      - .:/home/user                 
+    stdin_open: true
+    tty: true
+    command: bash
+    restart: "no"
