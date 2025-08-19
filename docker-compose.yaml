@@ -1,0 +1,443 @@
+# docker-compose.yml
+
+services:
+  # Redis Cluster setup (6 nodes: 3 masters, 3 replicas)
+  redis-node-1:
+    image: redis/redis-stack-server:latest
+    command: redis-server /usr/local/etc/redis/redis.conf 
+    volumes:
+      - ./redis.conf:/usr/local/etc/redis/redis.conf
+    ports:
+      - "6379:6379"
+      - "16379:16379" # Cluster bus port
+    networks:
+      - webrtc-net
+
+  redis-node-2:
+    image: redis/redis-stack-server:latest
+    command: redis-server /usr/local/etc/redis/redis.conf 
+    volumes:
+      - ./redis.conf:/usr/local/etc/redis/redis.conf
+    ports:
+      - "6380:6379"
+      - "16380:16379"
+    networks:
+      - webrtc-net
+
+  #service name
+  redis-node-3:
+
+    #pulls the latest redis image from docker hub
+    image: redis/redis-stack-server:latest
+
+    #runs the redis server in replica mode (usr/local/etc/redis/ is the default path for most redis images)
+    command: redis-server /usr/local/etc/redis/redis.conf 
+
+    #mounts the redis.conf file to the container
+    volumes:
+      - ./redis.conf:/usr/local/etc/redis/redis.conf
+
+    #exposes the ports to the host ( Format: "HOST_PORT:CONTAINER_PORT")
+    ports:
+      #6379 is the default port for redis
+      #16379 is the default port for redis cluster bus
+      #6379 is the default port Redis listens on inside the container.
+      #6381 is the port you'll use to access Redis from your host machine.
+      - "6381:6379"
+      - "16381:16379"
+
+    #connects to the network
+    networks:
+      #webrtc-net is the name of the network
+      - webrtc-net
+
+  #service name
+  redis-node-4:
+    image: redis/redis-stack-server:latest
+    command: redis-server /usr/local/etc/redis/redis.conf
+    volumes:
+      - ./redis.conf:/usr/local/etc/redis/redis.conf
+    ports:
+      - "6382:6379"
+      - "16382:16379"
+    networks:
+      - webrtc-net
+
+  #service name
+  redis-node-5:
+    image: redis/redis-stack-server:latest
+    command: redis-server /usr/local/etc/redis/redis.conf
+    volumes:
+      - ./redis.conf:/usr/local/etc/redis/redis.conf
+    ports:
+      - "6383:6379"
+      - "16383:16379"
+    networks:
+      - webrtc-net
+
+  #service name
+  redis-node-6:
+    image: redis/redis-stack-server:latest
+    command: redis-server /usr/local/etc/redis/redis.conf
+    volumes:
+      - ./redis.conf:/usr/local/etc/redis/redis.conf
+    ports:
+      - "6384:6379"
+      - "16384:16379"
+    networks:
+      - webrtc-net
+
+  # Redis Cluster Setup Service
+  redis-cluster-setup:
+    image: redis:7-alpine
+    command: sh -c "apk add --no-cache bash && chmod +x /setup-cluster.sh && /setup-cluster.sh"
+    volumes:
+      - ./setup-cluster.sh:/setup-cluster.sh
+    networks:
+      - webrtc-net
+    depends_on:
+      - redis-node-1
+      - redis-node-2
+      - redis-node-3
+      - redis-node-4
+      - redis-node-5
+      - redis-node-6
+    restart: "no"
+
+  # Orchestration Service (New Node.js API Server)
+  orchestration-service:
+
+    #builds the docker image from the Dockerfile in the server directory
+    build:
+
+      #context is the root directory to access package.json
+      context: .
+
+      #dockerfile is the name of the Dockerfile
+      dockerfile: server/DockerFile
+
+    #exposes the ports to the host
+    ports:
+      - "8081:8081" # Expose API port
+
+    #environment variables
+    environment:
+      # #BACKEND_PORT is the port the server will listen on
+      # BACKEND_PORT: 8081
+      #REDIS_CLUSTER_NODES is the list of Redis nodes to connect to
+      REDIS_CLUSTER_NODES: redis-node-1:6379,redis-node-2:6379,redis-node-3:6379,redis-node-4:6379,redis-node-5:6379,redis-node-6:6379
+      #REDIS_SFU_CLUSTER_NODES is the list of SFU Redis cluster nodes to connect to
+      REDIS_SFU_CLUSTER_NODES: redis-sfu-1:6379,redis-sfu-2:6379,redis-sfu-3:6379,redis-sfu-4:6379,redis-sfu-5:6379,redis-sfu-6:6379
+      REDIS_URL: redis://redis-node-1:6379
+      # List of Signaling Servers for the Orchestration Service to choose from
+      # These are internal Docker network addresses, exposed ports are for external access if needed
+      SIGNALING_SERVER_URLS: sig-alpha,sig-beta
+      INSTANCE_NAME: Orchestration-Service
+    networks:
+      - webrtc-net
+      - kafka-cluster
+    depends_on:
+      - redis-cluster-setup
+      - redis-sfu-cluster-setup
+      - zookeeper
+      - kafka1
+      - kafka2
+      - kafka3
+      - signaling-server-1 # Ensure signaling servers are up before orchestration
+      - signaling-server-2
+
+  # Multiple Signaling Server Instances (Node.js)
+  signaling-server-1:
+    build:
+      context: .
+      dockerfile: server/signaling/DockerFile
+    ports:
+      - "8080:8080" # Expose for clients to connect (via orchestration)
+    environment:
+      REDIS_URL: redis://redis-node-1:6379
+      REDIS_CLUSTER_NODES: redis-node-1:6379,redis-node-2:6379,redis-node-3:6379,redis-node-4:6379,redis-node-5:6379,redis-node-6:6379
+      REDIS_SFU_CLUSTER_NODES: redis-sfu-1:6379,redis-sfu-2:6379,redis-sfu-3:6379,redis-sfu-4:6379,redis-sfu-5:6379,redis-sfu-6:6379
+
+      SIGNALING_SERVER_ID: sig-alpha # Unique ID for this signaling instance
+      # This is the external URL clients will use to connect to this specific signaling server
+      EXTERNAL_WS_URL: ws://localhost:8080
+      INSTANCE_NAME: Signaling-Server-1
+    networks:
+      - webrtc-net
+      - kafka-cluster
+    depends_on:
+      - redis-cluster-setup
+      - redis-sfu-cluster-setup
+      - kafka1
+      - kafka2
+      - kafka3
+      - zookeeper
+
+
+  signaling-server-2:
+    build:
+      context: .
+      dockerfile: server/signaling/DockerFile
+    ports:
+      - "8085:8080" # Expose on a different port for clients
+    environment:
+      REDIS_CLUSTER_NODES: redis-node-1:6379,redis-node-2:6379,redis-node-3:6379,redis-node-4:6379,redis-node-5:6379,redis-node-6:6379
+      REDIS_SFU_CLUSTER_NODES: redis-sfu-1:6379,redis-sfu-2:6379,redis-sfu-3:6379,redis-sfu-4:6379,redis-sfu-5:6379,redis-sfu-6:6379
+
+      REDIS_URL: redis://redis-node-1:6379
+      SIGNALING_SERVER_ID: sig-beta # Unique ID for this signaling instance
+      EXTERNAL_WS_URL: ws://localhost:8085
+      INSTANCE_NAME: Signaling-Server-2
+    networks:
+      - webrtc-net
+      - kafka-cluster
+    depends_on:
+      - redis-cluster-setup
+      - redis-sfu-cluster-setup
+      - kafka1
+      - kafka2
+      - kafka3
+      - zookeeper
+
+
+  # SFU Instances (Go)
+  # sfu-1:
+  #   build:
+  #     context: ./sfu
+  #     dockerfile: Dockerfile
+  #   environment:
+  #     SFU_ID: sfu-alpha # Unique ID for this SFU instance
+  #     # SFUs connect to their assigned signaling server via Redis Pub/Sub, so direct WS URL not needed here
+  #     REDIS_CLUSTER_NODES: redis-node-1:6379,redis-node-2:6379,redis-node-3:6379
+  #   networks:
+  #     - webrtc-net
+  #   depends_on:
+  #     - redis-node-1
+  #     - redis-node-2
+  #     - redis-node-3
+  #     - redis-node-4
+  #     - redis-node-5
+  #     - redis-node-6
+
+  # sfu-2:
+  #   build:
+  #     context: ./sfu
+  #     dockerfile: Dockerfile
+  #   environment:
+  #     SFU_ID: sfu-beta # Unique ID for this SFU instance
+  #     REDIS_CLUSTER_NODES: redis-node-1:6379,redis-node-2:6379,redis-node-3:6379
+  #   networks:
+  #     - webrtc-net
+  #   depends_on:
+  #     - redis-node-1
+  #     - redis-node-2
+  #     - redis-node-3
+  #     - redis-node-4
+  #     - redis-node-5
+  #     - redis-node-6
+
+#volumes is used to persist the data across container restarts  zookeeper:
+  
+  #zookeeper is used to manage the kafka cluster and coordination between kafka brokers
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    hostname: zookeeper
+    container_name: zookeeper
+    ports:
+      - "2181:2181"
+    networks:
+      - kafka-cluster
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  kafka1:
+
+    #pulls the latest kafka image from docker hub
+    image: confluentinc/cp-kafka:7.5.0
+
+    #hostname is the name of the host inside the container, also used for network communication names within container
+    hostname: kafka1
+
+    #container_name is the name of the container
+    container_name: kafka1
+
+    #depends_on is used to ensure that the zookeeper container is up and running before starting the kafka container
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    networks:
+      - kafka-cluster
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka1:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+
+  kafka2:
+    image: confluentinc/cp-kafka:7.5.0
+    hostname: kafka2
+    container_name: kafka2
+    depends_on:
+      - zookeeper
+    ports:
+      - "9093:9093"
+    networks:
+      - kafka-cluster
+    environment:
+      KAFKA_BROKER_ID: 2
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka2:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9093
+
+  kafka3:
+    image: confluentinc/cp-kafka:7.5.0
+    hostname: kafka3
+    container_name: kafka3
+    depends_on:
+      - zookeeper
+    ports:
+      - "9094:9094"
+    networks:
+      - kafka-cluster
+    environment:
+      KAFKA_BROKER_ID: 3
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka3:9094
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9094
+  # SFU Redis Cluster - Dedicated cluster for SFU instances (Production Ready)
+  # Commented out old single-instance Redis for SFU:
+  # redis-sfu:
+  #   image: redis/redis-stack-server:latest
+  #   command: redis-server /usr/local/etc/redis/redis-single.conf
+  #   volumes:
+  #     - ./redis-single.conf:/usr/local/etc/redis/redis-single.conf
+  #   ports:
+  #     - "6385:6379"
+  #     - "16385:16379"
+  #   networks:
+  #     - webrtc-net
+  redis-sfu-1:
+    image: redis/redis-stack-server:latest
+    command: redis-server /usr/local/etc/redis/redis-sfu-cluster.conf
+    volumes:
+      - ./redis-sfu-cluster.conf:/usr/local/etc/redis/redis-sfu-cluster.conf
+    ports:
+      - "6385:6379"
+      - "16385:16379"
+    networks:
+      - webrtc-net
+
+  redis-sfu-2:
+    image: redis/redis-stack-server:latest
+    command: redis-server /usr/local/etc/redis/redis-sfu-cluster.conf
+    volumes:
+      - ./redis-sfu-cluster.conf:/usr/local/etc/redis/redis-sfu-cluster.conf
+    ports:
+      - "6386:6379"
+      - "16386:16379"
+    networks:
+      - webrtc-net
+
+  redis-sfu-3:
+    image: redis/redis-stack-server:latest
+    command: redis-server /usr/local/etc/redis/redis-sfu-cluster.conf
+    volumes:
+      - ./redis-sfu-cluster.conf:/usr/local/etc/redis/redis-sfu-cluster.conf
+    ports:
+      - "6387:6379"
+      - "16387:16379"
+    networks:
+      - webrtc-net
+
+  redis-sfu-4:
+    image: redis/redis-stack-server:latest
+    command: redis-server /usr/local/etc/redis/redis-sfu-cluster.conf
+    volumes:
+      - ./redis-sfu-cluster.conf:/usr/local/etc/redis/redis-sfu-cluster.conf
+    ports:
+      - "6388:6379"
+      - "16388:16379"
+    networks:
+      - webrtc-net
+
+  redis-sfu-5:
+    image: redis/redis-stack-server:latest
+    command: redis-server /usr/local/etc/redis/redis-sfu-cluster.conf
+    volumes:
+      - ./redis-sfu-cluster.conf:/usr/local/etc/redis/redis-sfu-cluster.conf
+    ports:
+      - "6389:6379"
+      - "16389:16379"
+    networks:
+      - webrtc-net
+
+  redis-sfu-6:
+    image: redis/redis-stack-server:latest
+    command: redis-server /usr/local/etc/redis/redis-sfu-cluster.conf
+    volumes:
+      - ./redis-sfu-cluster.conf:/usr/local/etc/redis/redis-sfu-cluster.conf
+    ports:
+      - "6390:6379"
+      - "16390:16379"
+    networks:
+      - webrtc-net
+
+  # Redis SFU Cluster Setup Service
+  redis-sfu-cluster-setup:
+    image: redis:7-alpine
+    command: sh -c "apk add --no-cache bash && chmod +x /setup-sfu-cluster.sh && /setup-sfu-cluster.sh"
+    volumes:
+      - ./setup-sfu-cluster.sh:/setup-sfu-cluster.sh
+    networks:
+      - webrtc-net
+    depends_on:
+      - redis-sfu-1
+      - redis-sfu-2
+      - redis-sfu-3
+      - redis-sfu-4
+      - redis-sfu-5
+      - redis-sfu-6
+
+  # SFU Instance (Go) - Updated to use Redis Cluster
+  ion-sfu-1:
+    build:
+      context: ./server/ion-sfu
+      dockerfile: DockerFile
+    environment:
+      SFU_ID: sfu-alpha # Unique ID for this SFU instance
+      REDIS_CLUSTER_NODES: redis-sfu-1:6379,redis-sfu-2:6379,redis-sfu-3:6379,redis-sfu-4:6379,redis-sfu-5:6379,redis-sfu-6:6379
+    networks:
+      - webrtc-net
+      - kafka-cluster
+    depends_on:
+      - redis-sfu-cluster-setup
+      - kafka1
+      - kafka2
+      - kafka3
+      - zookeeper
+
+networks:
+  #webrtc-net is the name of the network
+  #driver is the driver for the network
+  #bridge is the default driver for the network
+  webrtc-net:
+    driver: bridge
+    external: false
+  
+  kafka-cluster:
+    driver: bridge
+    external: false

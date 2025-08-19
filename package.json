@@ -3,7 +3,10 @@
   "version": "1.0.0",
   "main": "main.js",
   "scripts": {
-    "start": "electron .",
+    "docker:up": "docker-compose up -d",
+    "wait:redis": "wait-on tcp:localhost:6379",
+    "start": "npm run docker:up && npm run wait:redis && concurrently \"npm run server\" \"electron .\" ",
+    "server": "node server/index.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "build:css": "tailwindcss -c tailwind.config.js -i ./src/input.css -o ./tailwind.css"
   },
@@ -12,13 +15,26 @@
   "license": "ISC",
   "devDependencies": {
     "autoprefixer": "^10.4.21",
+    "concurrently": "^9.2.0",
     "electron": "^36.5.0",
     "electron-packager": "^17.1.2",
     "postcss": "^8.5.6",
-    "tailwindcss": "^3.4.17"
+    "tailwindcss": "^3.4.17",
+    "wait-on": "^8.0.4"
   },
   "dependencies": {
-    "express": "^5.1.0"
+    "@supabase/supabase-js": "^2.50.3",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^17.0.1",
+    "express": "^5.1.0",
+    "ioredis": "^5.7.0",
+    "jsonwebtoken": "^9.0.2",
+    "kafkajs": "^2.2.4",
+    "multer": "^2.0.1",
+    "nodemailer": "^6.10.1",
+    "redis": "^5.8.0",
+    "uuid": "^11.1.0"
   },
   "description": ""
 }

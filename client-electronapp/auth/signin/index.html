@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Professional Login - VideoChat</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+  <div class="w-full max-w-sm bg-white border border-gray-200 rounded-xl shadow-lg p-8 flex flex-col items-center">
+    <div class="w-full flex flex-col items-center mb-6">
+      <svg class="w-12 h-12 text-blue-600 mb-2" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V4a2 2 0 10-4 0v1.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+      <h2 class="text-2xl font-semibold text-gray-800">Sign in to VideoChat</h2>
+    </div>
+    <form class="w-full flex flex-col gap-4" id="signinForm">
+      <div>
+        <label class="block text-gray-700 text-sm font-medium mb-1" for="email">Email address</label>
+        <input class="appearance-none border border-gray-300 rounded-md w-full py-2 px-3 text-gray-800 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" id="email" type="email" placeholder="you@email.com" value="mylesgould2024@u.northwestern.edu" required>
+      </div>
+      <div>
+        <label class="block text-gray-700 text-sm font-medium mb-1" for="password">Password</label>
+        <input class="appearance-none border border-gray-300 rounded-md w-full py-2 px-3 text-gray-800 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" id="password" type="password" placeholder="********" value="#Password123" required>
+      </div>
+      <button class="mt-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-md shadow-sm transition-all duration-150" type="submit">Sign In</button>
+    </form>
+    <div class="w-full flex justify-between items-center mt-4">
+      <a href="#" class="text-xs text-blue-600 hover:underline">Forgot password?</a>
+      <a href="../signup/index.html" class="text-xs text-gray-500 hover:text-blue-600 hover:underline">Sign up</a>
+    </div>
+  </div>
+  <script src="helper.js"></script>
+</body>
+</html> 

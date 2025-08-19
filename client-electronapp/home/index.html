@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VideoChat - Home</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <script src="../helper.js"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <!-- Header -->
+  <header class="bg-white shadow-sm border-b border-gray-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between items-center h-16">
+        <div class="flex items-center">
+          <div class="flex-shrink-0">
+            <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V4a2 2 0 10-4 0v1.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            </svg>
+          </div>
+          <div class="ml-3">
+            <h1 class="text-xl font-semibold text-gray-900">VideoChat</h1>
+          </div>
+        </div>
+        
+        <div class="flex items-center space-x-4">
+          <button class="text-gray-500 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100">
+            <i class="fas fa-cog text-lg"></i>
+          </button>
+          <button class="text-gray-500 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100">
+            <i class="fas fa-bell text-lg"></i>
+          </button>
+          <div class="flex items-center space-x-2">
+            <div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+              <span class="text-white text-sm font-medium" id="userInitials">U</span>
+            </div>
+            <button class="text-gray-700 hover:text-gray-900" onclick="logout()">
+              <i class="fas fa-sign-out-alt"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Welcome Section -->
+    <div class="mb-8">
+      <h2 class="text-3xl font-bold text-gray-900 mb-2">Welcome back!</h2>
+      <p class="text-gray-600">Ready to start your next meeting?</p>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+      <!-- New Meeting -->
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+        <div class="flex items-center mb-4">
+          <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mr-4">
+            <i class="fas fa-video text-blue-600 text-xl"></i>
+          </div>
+          <div>
+            <h3 class="text-lg font-semibold text-gray-900">New Meeting</h3>
+            <p class="text-sm text-gray-600">Start an instant meeting</p>
+          </div>
+        </div>
+        <button onclick="openNewMeetingModal()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">
+          Start Meeting
+        </button>
+      </div>
+
+      <!-- Join Meeting -->
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+        <div class="flex items-center mb-4">
+          <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mr-4">
+            <i class="fas fa-sign-in-alt text-green-600 text-xl"></i>
+          </div>
+          <div>
+            <h3 class="text-lg font-semibold text-gray-900">Join Meeting</h3>
+            <p class="text-sm text-gray-600">Enter meeting ID or link</p>
+          </div>
+        </div>
+        <div class="space-y-3">
+          <input type="text" id="meetingId" placeholder="Meeting ID" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+          <button onclick="joinMeeting()" class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">
+            Join
+          </button>
+        </div>
+      </div>
+
+      <!-- Schedule Meeting -->
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+        <div class="flex items-center mb-4">
+          <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mr-4">
+            <i class="fas fa-calendar-plus text-purple-600 text-xl"></i>
+          </div>
+          <div>
+            <h3 class="text-lg font-semibold text-gray-900">Schedule Meeting</h3>
+            <p class="text-sm text-gray-600">Plan for later</p>
+          </div>
+        </div>
+        <button onclick="scheduleMeeting()" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">
+          Schedule
+        </button>
+      </div>
+    </div>
+
+    <!-- Recent Meetings -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <div class="flex items-center justify-between mb-6">
+        <h3 class="text-xl font-semibold text-gray-900">Recent Meetings</h3>
+        <button class="text-blue-600 hover:text-blue-700 text-sm font-medium">View All</button>
+      </div>
+      
+      <div class="space-y-4" id="recentMeetings">
+        <!-- Recent meeting items will be populated here -->
+        <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+          <div class="flex items-center">
+            <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+              <i class="fas fa-video text-blue-600"></i>
+            </div>
+            <div>
+              <h4 class="font-medium text-gray-900">Team Standup</h4>
+              <p class="text-sm text-gray-600">Today, 9:00 AM</p>
+            </div>
+          </div>
+          <button class="text-blue-600 hover:text-blue-700 text-sm font-medium">Join</button>
+        </div>
+        
+        <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+          <div class="flex items-center">
+            <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mr-3">
+              <i class="fas fa-video text-green-600"></i>
+            </div>
+            <div>
+              <h4 class="font-medium text-gray-900">Client Presentation</h4>
+              <p class="text-sm text-gray-600">Yesterday, 2:00 PM</p>
+            </div>
+          </div>
+          <button class="text-blue-600 hover:text-blue-700 text-sm font-medium">Join</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- New Meeting Modal -->
+  <div id="newMeetingModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+      <div class="mt-3">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-medium text-gray-900">Create New Meeting</h3>
+          <button onclick="closeNewMeetingModal()" class="text-gray-400 hover:text-gray-600">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="mb-4">
+          <label for="meetingName" class="block text-sm font-medium text-gray-700 mb-2">Meeting Name</label>
+          <input 
+            type="text" 
+            id="meetingName" 
+            placeholder="Enter meeting name..." 
+            class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            maxlength="50"
+          >
+        </div>
+        <div class="flex justify-end space-x-3">
+          <button 
+            onclick="closeNewMeetingModal()" 
+            class="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors"
+          >
+            Cancel
+          </button>
+          <button 
+            onclick="createNewMeeting()" 
+            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Create Meeting
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="helper.js"></script>
+</body>
+</html>

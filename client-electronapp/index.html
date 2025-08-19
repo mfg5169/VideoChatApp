@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VideoChat - Loading...</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      color: white;
+    }
+    .loading-container {
+      text-align: center;
+    }
+    .spinner {
+      border: 4px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top: 4px solid white;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 20px;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .loading-text {
+      font-size: 18px;
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+  <div class="loading-container">
+    <div class="spinner"></div>
+    <div class="loading-text">Loading VideoChat...</div>
+  </div>
+
+  <script>
+    const DockerUrl = 'http://localhost:8081';
+    // Check authentication status and redirect accordingly
+    async function checkAuthAndRedirect() {
+      try {
+        // Check if user is authenticated by looking for auth token
+        const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+        
+        // You can also check for other auth indicators like user data
+        const userData = localStorage.getItem('userData');
+        
+        // Add a small delay to show loading state
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        if (token && userData) {
+          // User is authenticated, redirect to home
+          window.location.href = './home/index.html';
+        } else {
+          // User is not authenticated, redirect to signin
+          window.location.href = './auth/signin/index.html';
+        }
+      } catch (error) {
+        console.error('Error checking authentication:', error);
+        // On error, redirect to signin as fallback
+        window.location.href = './auth/signin/index.html';
+      }
+    }
+
+    // Alternative method using fetch to check with backend
+    async function checkAuthWithBackend() {
+      try {
+        const response = await fetch(`${DockerUrl}/api/auth/verify`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('authToken') || sessionStorage.getItem('authToken')}`
+          },
+          credentials: 'include'
+        });
+
+        if (response.ok) {
+          // User is authenticated
+          window.location.href = './home/index.html';
+        } else {
+          // User is not authenticated
+          window.location.href = './auth/signin/index.html';
+        }
+      } catch (error) {
+        console.error('Error checking authentication with backend:', error);
+        // Fallback to local storage check
+        checkAuthAndRedirect();
+      }
+    }
+
+    // Start the authentication check when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+      // Try backend check first, fallback to local storage check
+      checkAuthWithBackend();
+    });
+
+    // Fallback: if backend check fails, use local storage check
+    setTimeout(() => {
+      if (window.location.pathname.includes('index.html')) {
+        checkAuthAndRedirect();
+      }
+    }, 3000);
+  </script>
+</body>
+</html>

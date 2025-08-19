@@ -1,0 +1,18 @@
+# orchestration-service/Dockerfile
+FROM node:18-alpine
+
+# Install bash for dev
+# RUN apk update && apk add --no-cache bash
+
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY server/signaling/ ./signaling/
+COPY server/utils/ ./utils/
+EXPOSE 8080
+
+WORKDIR /app/signaling
+CMD ["node", "signal-server.js"]
+
+# Default command (can be overridden when starting)
+# CMD ["bash"]

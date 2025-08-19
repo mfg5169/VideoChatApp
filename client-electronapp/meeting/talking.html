@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Talking Profile</title>
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: #111;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+    }
+
+    .container {
+      position: relative;
+      width: 200px;
+      height: 200px;
+    }
+
+    .profile-pic {
+      width: 150px;
+      height: 150px;
+      border-radius: 50%;
+      object-fit: cover;
+      z-index: 2;
+      position: relative;
+      border: 3px solid #fff;
+      cursor: pointer;
+    }
+
+    .wave {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 150px;
+      height: 150px;
+      border-radius: 50%;
+      border: 2px solid #00f2ff;
+      transform: translate(-50%, -50%);
+      opacity: 0;
+      animation: waveAnim 1.8s ease-out infinite;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .wave:nth-child(1) {
+      animation-delay: 0s;
+    }
+    .wave:nth-child(2) {
+      animation-delay: 0.4s;
+    }
+    .wave:nth-child(3) {
+      animation-delay: 0.8s;
+    }
+
+    @keyframes waveAnim {
+      0% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 0.6;
+      }
+      100% {
+        transform: translate(-50%, -50%) scale(2.5);
+        opacity: 0;
+      }
+    }
+
+    .waves {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: none;
+    }
+
+    .talking .waves {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container" id="talkingContainer">
+    <img src="https://i.pravatar.cc/150" alt="Profile Photo" class="profile-pic" id="profilePic">
+    <div class="waves">
+      <div class="wave"></div>
+      <div class="wave"></div>
+      <div class="wave"></div>
+    </div>
+  </div>
+
+  <script>
+    const container = document.getElementById('talkingContainer');
+    const pic = document.getElementById('profilePic');
+
+    // Example: toggle talking on click
+    pic.addEventListener('click', () => {
+      container.classList.toggle('talking');
+    });
+
+    // Later: replace this toggle with real voice detection
+  </script>
+
+</body>
+</html>
