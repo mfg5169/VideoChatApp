@@ -12,18 +12,18 @@ const wss = new WebSocket.Server({ server });
 const redis = require('../utils/datamanagement/redis');
 
 const { MeetingsConsumer, safeKafkaSend } = require('./utils/communication');
-const { RegisterClientSfu, ClientJoinsMeeting, ClientLeavesMeeting, WebRTCHandler, SfuSignalToClient, WebSocketDisconnectClient, WebSocketDisconnectSfu, startHeartbeat } = require('./utils/signal-helpers');
+const { AddSignalingServerToRedis, RegisterClientSfu, ClientJoinsMeeting, ClientLeavesMeeting, WebRTCHandler, SfuSignalToClient, WebSocketDisconnectClient, WebSocketDisconnectSfu, startHeartbeat, handleChatMessage, broadcastToMeeting } = require('./utils/signal-helpers');
 
 // Store WebSocket connections (clients and SFUs)
-const clients = new Map(); // Map<clientId, WebSocket>
-const sfus = new Map();    // Map<sfuId, WebSocket>
-
+const clients = new Map(); 
+const sfus = new Map();    
 // Start heartbeat interval
 const heartbeatInterval = startHeartbeat(clients);
 
 
 wss.on('connection', (ws) => {
   console.log('New WebSocket connection established.');
+  AddSignalingServerToRedis();
 
   ws.on('message', async (message) => {
     try {
@@ -48,11 +48,16 @@ wss.on('connection', (ws) => {
       if (type === 'joinMeeting') {
         ClientJoinsMeeting(ws, payload, senderId);
         return;
-  
       }      
 
       if (type === 'leaveMeeting') {
         ClientLeavesMeeting(payload, senderId);
+        return;
+      }
+
+      // --- Handle chat messages ---
+      if (type === 'chat') {
+        handleChatMessage(payload, senderId, clients);
         return;
       }
 

@@ -1,12 +1,11 @@
-// Import necessary Electron modules
 const { app, BrowserWindow, ipcMain, desktopCapturer } = require('electron');
 const path = require('path');
 
 // Function to create the main application window
 function createWindow () {
   const win = new BrowserWindow({
-    width: 1000, // Set window width
-    height: 800, // Set window height
+    width: 1000,
+    height: 800, 
     webPreferences: {
       preload: path.join(__dirname, 'client-electronapp/preload.js'), // Preload script
       contextIsolation: true, // Enable context isolation for security
@@ -25,7 +24,7 @@ function createWindow () {
 // Handle IPC call from renderer to get screen and window sources
 ipcMain.handle('get-screen-sources', async () => {
   const sources = await desktopCapturer.getSources({ types: ['screen', 'window'] });
-  return sources; // Return the list of sources
+  return sources;
 });
 
 console.log("Opening Application");

@@ -96,7 +96,65 @@
 //         console.error('Error accessing webcam/microphone:', err);
 //     });
 
-// // Start call function (Placeholder for WebRTC setup)
+// // Copy meeting ID function
+async function copyMeetingId() {
+  const meetingIdElement = document.getElementById('meetingId');
+  const copyButton = document.getElementById('copyMeetingIdBtn');
+  const copyIcon = copyButton.querySelector('i');
+  
+  // Extract the meeting ID from the text (remove "ID: " prefix)
+  const meetingIdText = meetingIdElement.textContent;
+  const meetingId = meetingIdText.replace('ID: ', '');
+  
+  if (meetingId === 'Loading...') {
+    return; // Don't copy if still loading
+  }
+  
+  try {
+    // Copy to clipboard
+    await navigator.clipboard.writeText(meetingId);
+    
+    // Visual feedback - change icon to checkmark
+    copyIcon.className = 'fas fa-check text-sm';
+    copyButton.classList.remove('text-gray-400', 'hover:text-white');
+    copyButton.classList.add('text-green-400');
+    copyButton.title = 'Copied!';
+    
+    // Reset after 2 seconds
+    setTimeout(() => {
+      copyIcon.className = 'fas fa-copy text-sm';
+      copyButton.classList.remove('text-green-400');
+      copyButton.classList.add('text-gray-400', 'hover:text-white');
+      copyButton.title = 'Copy meeting ID';
+    }, 2000);
+    
+  } catch (err) {
+    console.error('Failed to copy meeting ID:', err);
+    
+    // Fallback for older browsers
+    const textArea = document.createElement('textarea');
+    textArea.value = meetingId;
+    document.body.appendChild(textArea);
+    textArea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textArea);
+    
+    // Still show success feedback
+    copyIcon.className = 'fas fa-check text-sm';
+    copyButton.classList.remove('text-gray-400', 'hover:text-white');
+    copyButton.classList.add('text-green-400');
+    copyButton.title = 'Copied!';
+    
+    setTimeout(() => {
+      copyIcon.className = 'fas fa-copy text-sm';
+      copyButton.classList.remove('text-green-400');
+      copyButton.classList.add('text-gray-400', 'hover:text-white');
+      copyButton.title = 'Copy meeting ID';
+    }, 2000);
+  }
+}
+
+// Start call function (Placeholder for WebRTC setup)
 // function startCall() {
 //     alert('WebRTC setup would go here.')
 // }

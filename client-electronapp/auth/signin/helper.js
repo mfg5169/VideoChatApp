@@ -24,6 +24,10 @@ document.getElementById('signinForm').addEventListener('submit', async (e) => {
       password: password,
     })
 
+    controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+    console.log("Timeout ID: ", timeoutId);
+
     try {
       const res = await fetch(`${DockerUrl}/auth/login`, {
         method: 'POST',
@@ -31,7 +35,10 @@ document.getElementById('signinForm').addEventListener('submit', async (e) => {
           'Content-Type': 'application/json',
         },
         body: formData,
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       console.log("res: ", res);
 

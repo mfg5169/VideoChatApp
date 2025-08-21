@@ -141,7 +141,7 @@ async function findBestSignalingServer(availableSignalingServerUrls) {
     for (const url of availableSignalingServerUrls) {
         const urlObj = new URL(url);
         const sigServerId = urlObj.hostname + ':' + urlObj.port;
-        const metrics = await redis.hgetall(`signaling:${sigServerId}:metrics`);
+        const metrics = await redis.hgetall(`signaling:${url}:metrics`);
         console.info(`\t\tFindBestSignalingServer(Function Call): Here are the metrics for the Signaling Server ${sigServerId}: `, metrics);
 
         const connectedClients = parseInt(metrics.connected_clients || 0, 10);
@@ -162,7 +162,7 @@ async function findBestSignalingServer(availableSignalingServerUrls) {
             }
         } else {
             console.warn(`\t\tFindBestSignalingServer(Function Call): Signaling Server ${sigServerId} is stale. Skipping...`);
-            await redis.srem('available_signaling_servers', sigServerId);
+            await redis.srem('available_signaling_servers', url);
         }
     }
 

@@ -39,8 +39,6 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 
-
-
 // Username/Password Signup
 router.post('/signup', upload.single('profilePicture'), async (req, res) => {
     try {
@@ -108,6 +106,7 @@ router.post('/signup', upload.single('profilePicture'), async (req, res) => {
         const verificationToken = uuidv4();
 
 
+        console.info("Creating user in database");
         // Create user in database
         const { data: newUser, error: insertError } = await supabase
             .from('users')
@@ -127,6 +126,8 @@ router.post('/signup', upload.single('profilePicture'), async (req, res) => {
             ])
             .select('id, username, email, created_at')
             .single();
+
+        console.info("User created in database");
 
         if (insertError) {
             console.log("Database Insert Error: ", insertError.message);
@@ -221,6 +222,7 @@ router.post('/signup', upload.single('profilePicture'), async (req, res) => {
         //     return res.status(500).json({ error: 'Failed to manage session' });
         // }
 
+        console.info("Signup successful");
         res.status(201).json({
             message: 'Signup successful'
         });

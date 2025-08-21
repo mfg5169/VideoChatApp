@@ -49,7 +49,15 @@
         return;
       }
 
-      // Generate a random meeting ID
+      // Disable the create meeting button
+      const createButton = document.querySelector('button[onclick="createNewMeeting()"]');
+      if (createButton) {
+        createButton.disabled = true;
+        createButton.textContent = 'Creating...';
+        createButton.classList.add('opacity-50', 'cursor-not-allowed');
+      }
+
+
 
       // const baseUrl = 'http://localhost:3001';
       const DockerUrl = 'http://localhost:8081';
@@ -57,7 +65,7 @@
       const user = JSON.parse(sessionStorage.getItem('user'));
       function handleCreateMeeting() {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+        const timeoutId = setTimeout(() => controller.abort(), 10000); 
 
         fetch(`${DockerUrl}/meeting/join`, {
           method: 'POST',
@@ -105,6 +113,15 @@
         .then(data => {
           clearTimeout(timeoutId); // Clear the timeout
           console.log('Meeting created:', data);
+          
+          // Re-enable the create meeting button
+          const createButton = document.querySelector('button[onclick="createNewMeeting()"]');
+          if (createButton) {
+            createButton.disabled = false;
+            createButton.textContent = 'Create Meeting';
+            createButton.classList.remove('opacity-50', 'cursor-not-allowed');
+          }
+          
           closeNewMeetingModal();
           // Store the returned sfu and signaling server in session storage
           if (data.sfu) {
@@ -113,11 +130,21 @@
           if (data.signalingServer) {
             sessionStorage.setItem('assignedSignalingServerUrl', data.signalingServer);
           }
-          window.location.href = `../meeting/index.html?meetingId=${data.meetingId}`;
+          sessionStorage.setItem('meetingName', meetingName);
+          sessionStorage.setItem('meetingId', data.meetingID);
+          window.location.href = `../meeting/index.html?meetingID=${data.meetingID}`;
         })
         .catch(err => {
           clearTimeout(timeoutId); // Clear the timeout
           console.error('Error creating meeting:', err);
+          
+          // Re-enable the create meeting button
+          const createButton = document.querySelector('button[onclick="createNewMeeting()"]');
+          if (createButton) {
+            createButton.disabled = false;
+            createButton.textContent = 'Create Meeting';
+            createButton.classList.remove('opacity-50', 'cursor-not-allowed');
+          }
           
           if (err.name === 'AbortError') {
             alert('Request timed out. Please check your connection and try again.');

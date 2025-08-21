@@ -1,5 +1,6 @@
   // Handle profile picture preview
 const baseUrl = 'http://localhost:3001';
+const DockerUrl = 'http://localhost:8081';
 const profilePictureInput = document.getElementById('profilePicture');
 const imagePreview = document.getElementById('imagePreview');
 const previewImg = document.getElementById('previewImg');
@@ -55,12 +56,20 @@ document.getElementById('signupForm').addEventListener('submit', async (e) => {
     formData.append('password', password);
     formData.append('profilePicture', profilePictureInput.files[0]);
     
+    controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+    console.log("Timeout ID: ", timeoutId);
 
     try {
-      const res = await fetch(`${baseUrl}/auth/signup`, {
+      const res = await fetch(`${DockerUrl}/auth/signup`, {
         method: 'POST',
         body: formData,
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
+
+      console.log("Response.status: ", res.status);
 
       if (res.status >= 400 && res.status < 600) {
         alert('An error occurred during signup. Please try again.');
@@ -70,12 +79,14 @@ document.getElementById('signupForm').addEventListener('submit', async (e) => {
       console.log("Data: ", data);
     } catch (err) {
       console.error('Error uploading image:', err);
+      alert('An error occurred during signup. Please try again.');
+      return;
     }
     // Here you would typically send the form data to your backend
     console.log('Form submitted:', formData);
 
     //clearForm();
-        
+      
     // For now, just show a success message
     alert('Account created successfully!');
     window.location.href = '../signin/index.html';
