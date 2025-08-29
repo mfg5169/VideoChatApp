@@ -1,3 +1,142 @@
+// TEST: Basic console test - this should appear immediately
+console.log('🚀 CLIENT SCRIPT LOADED - Basic console test');
+console.log('🚀 If you see this, the script is loading and console is working');
+console.log('🚀 Current time:', new Date().toISOString());
+
+
+// class WebRTCHandler {
+//   constructor() {
+//     this.peerConnection = null;
+//     this.ICEbuffer = [];
+//   }
+
+//   addICECandidates(candidate) {
+//     this.ICEbuffer.push(candidate);
+//   }
+
+//   createPeerConnection() {
+//     this.peerConnection = new RTCPeerConnection(this.ICEbuffer);
+//   }
+// }
+// Production-level logging utility
+const Logger = {
+  levels: {
+    DEBUG: 0,
+    INFO: 1,
+    WARN: 2,
+    ERROR: 3
+  },
+  currentLevel: 1, // INFO level by default
+  
+  formatMessage(level, component, message, data = null) {
+    const timestamp = new Date().toISOString();
+    const logLevel = Object.keys(this.levels)[level];
+    
+    // Get function call information
+    const stack = new Error().stack;
+    const caller = this.getCallerInfo(stack);
+    
+    const prefix = `[${timestamp}] [${logLevel}] [${component}] [${caller}]`;
+    
+    if (data) {
+      return [`${prefix} ${message}`, data];
+    }
+    return [`${prefix} ${message}`];
+  },
+  
+  getCallerInfo(stack) {
+    try {
+      // Split stack into lines and find the caller (skip the first 3 lines: Error, formatMessage, and the logging method)
+      const lines = stack.split('\n');
+      if (lines.length >= 4) {
+        const callerLine = lines[3];
+        // Extract function name and file info
+        const match = callerLine.match(/at\s+(.+?)\s+\((.+?):(\d+):(\d+)\)/);
+        if (match) {
+          const functionName = match[1];
+          const filePath = match[2];
+          const lineNumber = match[3];
+          
+          // Extract just the filename from the full path
+          const fileName = filePath.split('/').pop() || filePath.split('\\').pop() || filePath;
+          
+          return `${functionName}@${fileName}:${lineNumber}`;
+        }
+      }
+      return 'unknown';
+    } catch (error) {
+      return 'unknown';
+    }
+  },
+  
+  debug(component, message, data = null) {
+    if (this.currentLevel <= this.levels.DEBUG) {
+      console.debug(...this.formatMessage(this.levels.DEBUG, component, message, data));
+    }
+  },
+  
+  info(component, message, data = null) {
+    if (this.currentLevel <= this.levels.INFO) {
+      console.info(...this.formatMessage(this.levels.INFO, component, message, data));
+    }
+  },
+  
+  warn(component, message, data = null) {
+    if (this.currentLevel <= this.levels.WARN) {
+      console.warn(...this.formatMessage(this.levels.WARN, component, message, data));
+    }
+  },
+  
+  error(component, message, error = null, data = null) {
+    if (this.currentLevel <= this.levels.ERROR) {
+      console.error(...this.formatMessage(this.levels.ERROR, component, message, data));
+      if (error) {
+        console.error('Error details:', error);
+        console.error('Error stack:', error.stack);
+      }
+    }
+  }
+};
+
+// TEST: Add a very visible test log to verify logging is working
+console.log('🔍 CLIENT LOGGING TEST: This should be visible in the console');
+console.log('🔍 CLIENT LOGGING TEST: If you see this, the console is working');
+Logger.info('TEST', 'Client logging system initialized', { test: true, timestamp: new Date().toISOString() });
+Logger.warn('TEST', 'This is a test warning message', { test: true });
+Logger.error('TEST', 'This is a test error message', new Error('Test error'), { test: true });
+
+// Global state tracking
+const AppState = {
+  meetingId: null,
+  userId: null,
+  userName: null,
+  signalingUrl: null,
+  connectionState: 'disconnected',
+  peerConnectionState: 'new',
+  localStreamState: 'not_initialized',
+  remoteParticipants: new Map(),
+  chatMessages: [],
+  
+  updateState(newState) {
+    Object.assign(this, newState);
+    Logger.info('STATE', 'Application state updated', this);
+  },
+  
+  getState() {
+    return {
+      meetingId: this.meetingId,
+      userId: this.userId,
+      userName: this.userName,
+      signalingUrl: this.signalingUrl,
+      connectionState: this.connectionState,
+      peerConnectionState: this.peerConnectionState,
+      localStreamState: this.localStreamState,
+      remoteParticipantsCount: this.remoteParticipants.size,
+      chatMessagesCount: this.chatMessages.length
+    };
+  }
+};
+
 let isAudioEnabled = true;
 let isVideoEnabled = true;
 let isScreenSharing = false;
@@ -9,10 +148,32 @@ let ws = null;
 
 // Get meeting ID from URL
 const urlParams = new URLSearchParams(window.location.search);
-console.log("URL Params: ", urlParams);
-const meetingID = urlParams.get('meetingID') || 'DEMO-123';
-const meetingName = sessionStorage.getItem('meetingName') || 'DEMO-123';
-const user = JSON.parse(localStorage.getItem('userData'));
+Logger.info('INIT', 'URL Parameters parsed', { urlParams: Object.fromEntries(urlParams) });
+const meetingID = urlParams.get('meetingId') || urlParams.get('meetingID') || 'DEMO-123';
+const meetingName = sessionStorage.getItem('meetingName') || 'Meeting';
+
+// Debug: Log what we're getting from sessionStorage
+Logger.debug('INIT', 'SessionStorage data retrieved', {
+  meetingName: sessionStorage.getItem('meetingName'),
+  meetingId: sessionStorage.getItem('meetingId'),
+  urlMeetingID: meetingID,
+  finalMeetingName: meetingName
+});
+
+const user = JSON.parse(sessionStorage.getItem('user'));
+Logger.info('INIT', 'User data loaded from session storage', {
+  userId: user?.id,
+  userName: user?.name,
+  userEmail: user?.email
+});
+
+// Update global state
+AppState.updateState({
+  meetingId: meetingID,
+  userId: user?.id,
+  userName: user?.name || user?.email,
+  signalingUrl: sessionStorage.getItem('assignedSignalingServerUrl')
+});
 
 // Remote participants management
 let remoteVideoElements = new Map();
@@ -23,17 +184,32 @@ let chatMessages = [];
 
 // Initialize meeting
 document.addEventListener('DOMContentLoaded', function() {
-  document.getElementById('meetingId').textContent = `ID: ${meetingID}`;
-  document.getElementById('meetingTitle').textContent = `Meeting ${meetingName}`;
+  Logger.info('DOM', 'DOM content loaded, initializing meeting interface');
   
-  // Initialize video streams
-  initializeVideoStreams();
-  
-  // Set up chat input event listeners
-  setupChatHandlers();
+  try {
+    document.getElementById('meetingId').textContent = `ID: ${meetingID}`;
+    document.getElementById('meetingTitle').textContent = `Meeting ${meetingName}`;
+    
+    Logger.info('DOM', 'Meeting interface elements updated', {
+      meetingId: meetingID,
+      meetingName: meetingName
+    });
+    
+    // Initialize video streams
+    initializeVideoStreams();
+    
+    // Set up chat input event listeners
+    setupChatHandlers();
+    
+    Logger.info('DOM', 'Meeting initialization completed successfully');
+  } catch (error) {
+    Logger.error('DOM', 'Failed to initialize meeting interface', error);
+  }
 });
 
 async function initializeVideoStreams() {
+  Logger.info('STREAM', 'Starting video stream initialization');
+  
   //complex constraints are used to get the best quality video and audio
   const complexConstraints = {
     audio: {
@@ -49,21 +225,66 @@ async function initializeVideoStreams() {
     }
   }
 
-  localStream = await navigator.mediaDevices.getUserMedia(complexConstraints)
-    .then(stream => {
-      localVideo = document.getElementById('mainVideo');
-      localVideo.srcObject = stream;
-      // Initialize WebSocket connection after local stream is ready
-      InitializeSocketConnection();
-    })
-    .catch(err => {
-      console.error('Error accessing webcam/microphone:', err);
+  Logger.debug('STREAM', 'Media constraints configured', complexConstraints);
+  Logger.info('STREAM', 'Requesting user media access...');
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia(complexConstraints);
+    
+    Logger.info('STREAM', 'User media access granted', {
+      audioTracks: stream.getAudioTracks().length,
+      videoTracks: stream.getVideoTracks().length,
+      trackIds: stream.getTracks().map(track => ({
+        kind: track.kind,
+        id: track.id,
+        enabled: track.enabled,
+        muted: track.muted
+      }))
     });
+    
+    localVideo = document.getElementById('mainVideo');
+    if (!localVideo) {
+      throw new Error('Main video element not found in DOM');
+    }
+    
+    localVideo.srcObject = stream;
+    localStream = stream;
+    
+    // Update state
+    AppState.updateState({ localStreamState: 'active' });
+    
+    Logger.info('STREAM', 'Local video stream attached to DOM element');
+    
+    // Initialize WebSocket connection after local stream is ready
+    Logger.info('STREAM', 'Local stream ready, initializing WebSocket connection');
+    InitializeSocketConnection();
+    
+  } catch (err) {
+    Logger.error('STREAM', 'Failed to access user media devices', err, {
+      constraints: complexConstraints,
+      errorName: err.name,
+      errorMessage: err.message
+    });
+    
+    AppState.updateState({ localStreamState: 'failed' });
+    
+    // Show user-friendly error message
+    alert(`Failed to access camera/microphone: ${err.message}`);
+  }
 }
 
 function addRemoteVideo(peerId, stream, participantName = 'Unknown') {
+    Logger.info('REMOTE', 'Adding remote video participant', {
+      peerId,
+      participantName,
+      streamTracks: stream.getTracks().length,
+      existingVideoElements: remoteVideoElements.size
+    });
+    
     let videoElement = remoteVideoElements.get(peerId);
     if (!videoElement) {
+        Logger.debug('REMOTE', 'Creating new video element for participant', { peerId, participantName });
+        
         // Create participant video container that matches the existing design
         const videoContainer = document.createElement('div');
         videoContainer.className = 'participant-video';
@@ -85,6 +306,11 @@ function addRemoteVideo(peerId, stream, participantName = 'Unknown') {
         
         // Add to video grid
         const videoGrid = document.getElementById('videoGrid');
+        if (!videoGrid) {
+            Logger.error('REMOTE', 'Video grid element not found in DOM');
+            return;
+        }
+        
         videoGrid.appendChild(videoContainer);
         
         remoteVideoElements.set(peerId, videoElement);
@@ -94,28 +320,62 @@ function addRemoteVideo(peerId, stream, participantName = 'Unknown') {
         
         // Update participant count
         updateParticipantCount();
+        
+        Logger.info('REMOTE', 'Remote video element created and added to DOM', {
+          peerId,
+          participantName,
+          totalRemoteVideos: remoteVideoElements.size
+        });
+    } else {
+        Logger.debug('REMOTE', 'Updating existing video element', { peerId, participantName });
     }
+    
     videoElement.srcObject = stream;
+    
+    // Add to global state
+    AppState.remoteParticipants.set(peerId, { name: participantName, stream });
 }
 
 function removeRemoteVideo(peerId) {
+    Logger.info('REMOTE', 'Removing remote video participant', { peerId });
+    
     const videoElement = remoteVideoElements.get(peerId);
     if (videoElement) {
         const videoContainer = videoElement.closest('.participant-video');
         if (videoContainer) {
             videoContainer.remove();
+            Logger.debug('REMOTE', 'Video container removed from DOM', { peerId });
         }
         remoteVideoElements.delete(peerId);
         removeParticipantFromList(peerId);
         updateParticipantCount();
-        console.log(`Removed video for peer: ${peerId}`);
+        
+        // Remove from global state
+        AppState.remoteParticipants.delete(peerId);
+        
+        Logger.info('REMOTE', 'Remote video participant removed', {
+          peerId,
+          remainingParticipants: remoteVideoElements.size
+        });
+    } else {
+        Logger.warn('REMOTE', 'Attempted to remove non-existent remote video', { peerId });
     }
 }
 
 function addParticipantToList(peerId, name) {
-    if (remoteParticipants.has(peerId)) return;
+    if (remoteParticipants.has(peerId)) {
+        Logger.debug('PARTICIPANTS', 'Participant already in list, skipping', { peerId, name });
+        return;
+    }
+    
+    Logger.info('PARTICIPANTS', 'Adding participant to list', { peerId, name });
     
     const participantsList = document.getElementById('participantsList');
+    if (!participantsList) {
+        Logger.error('PARTICIPANTS', 'Participants list element not found in DOM');
+        return;
+    }
+    
     const participantElement = document.createElement('div');
     participantElement.className = 'flex items-center justify-between p-3 bg-gray-700 rounded-lg';
     participantElement.id = `participant-list-${peerId}`;
@@ -141,6 +401,12 @@ function addParticipantToList(peerId, name) {
     
     participantsList.appendChild(participantElement);
     remoteParticipants.set(peerId, { name, element: participantElement });
+    
+    Logger.debug('PARTICIPANTS', 'Participant added to list successfully', {
+      peerId,
+      name,
+      totalParticipants: remoteParticipants.size
+    });
 }
 
 function removeParticipantFromList(peerId) {
@@ -148,6 +414,9 @@ function removeParticipantFromList(peerId) {
     if (participant) {
         participant.element.remove();
         remoteParticipants.delete(peerId);
+        Logger.debug('PARTICIPANTS', 'Participant removed from list', { peerId });
+    } else {
+        Logger.warn('PARTICIPANTS', 'Attempted to remove non-existent participant from list', { peerId });
     }
 }
 
@@ -156,177 +425,380 @@ function updateParticipantCount() {
     const participantCountElement = document.getElementById('participantCount');
     if (participantCountElement) {
         participantCountElement.textContent = count.toString();
+        Logger.debug('PARTICIPANTS', 'Participant count updated', { count });
+    } else {
+        Logger.warn('PARTICIPANTS', 'Participant count element not found in DOM');
     }
 }
 
-console.log("Session Storage assignedSignalingServerUrl: ", sessionStorage.getItem('assignedSignalingServerUrl'));
+Logger.info('SIGNALING', 'Signaling server URL from session storage', {
+  assignedSignalingServerUrl: sessionStorage.getItem('assignedSignalingServerUrl')
+});
 
 function sendMessage(type, payload) {
+  Logger.debug('SIGNALING', 'Preparing to send message', { type, payload });
+  
   if (ws && ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify({ 
+    const message = { 
       type: type, 
       payload: payload,
       senderId: user.id,
       meetingId: meetingID
-    }));
+    };
+
+    Logger.info('SIGNALING', 'Sending message to signaling server', message);
+    
+    try {
+      ws.send(JSON.stringify(message));
+      Logger.debug('SIGNALING', 'Message sent successfully', { type, messageSize: JSON.stringify(message).length });
+    } catch (error) {
+      Logger.error('SIGNALING', 'Failed to send message', error, { type, payload });
+    }
   } else {
-    console.error('WebSocket not connected or not open.');
+    Logger.error('SIGNALING', 'WebSocket not connected or not open', null, {
+      wsExists: !!ws,
+      wsReadyState: ws ? ws.readyState : 'null',
+      wsReadyStateText: ws ? ['CONNECTING', 'OPEN', 'CLOSING', 'CLOSED'][ws.readyState] : 'null'
+    });
   }
 }
 
 let peerConnection = null;
+let RemoteIceCandidates = [];
 const stunServers = [{ urls: 'stun:stun.l.google.com:19302' }]; // Google's public STUN server
 
 function createPeerConnection() {
-    peerConnection = new RTCPeerConnection({iceServers: stunServers});
-
-    //for each track in the local stream, add it to the peer connection
-    localStream.getTracks().forEach(track => {
-        //add the track to the peer connection and link it to the local stream
-        peerConnection.addTrack(track, localStream);
+    Logger.info('WEBRTC', 'Creating new PeerConnection', {
+      stunServers,
+      localStreamTracks: localStream ? localStream.getTracks().length : 0
     });
 
-    //review for ways to recieve ice candidates to see if you can start mining(receive/send)
-    peerConnection.onicecandidate = (event) => {
-        if (event.candidate) {
-            sendMessage('candidate', { candidate: event.candidate , clientID: user.id, meetingID: meetingID});
-        }
-        else{
-            console.log('ICE candidate gathering complete.');
-        }
-    };
-    
-    peerConnection.ontrack = (event) => {
-        console.log('Received remote track:', event.track);
-        const remoteStream = event.streams[0];
-        if (remoteStream) {
-            const remotePeerId = event.track.id;
-            // Try to get participant name from the track metadata or use a default
-            const participantName = event.track.label || `Participant ${remotePeerId.slice(0, 8)}`;
-            addRemoteVideo(remotePeerId, remoteStream, participantName);
-        }
-    };
+    try {
+        peerConnection = new RTCPeerConnection({iceServers: stunServers});
+        Logger.info('WEBRTC', 'PeerConnection created successfully');
 
-    peerConnection.onconnectionstatechange = () => {
-        console.log('PeerConnection state:', peerConnection.connectionState);
-        if (peerConnection.connectionState === 'disconnected' || peerConnection.connectionState === 'failed' || peerConnection.connectionState === 'closed') {
-            console.warn('PeerConnection disconnected or failed. Attempting to clean up.');
-            cleanupWebRTC();
+        //for each track in the local stream, add it to the peer connection
+        if (localStream) {
+            localStream.getTracks().forEach(track => {
+                //add the track to the peer connection and link it to the local stream
+                peerConnection.addTrack(track, localStream);
+                Logger.debug('WEBRTC', 'Local track added to PeerConnection', {
+                  trackKind: track.kind,
+                  trackId: track.id,
+                  trackEnabled: track.enabled
+                });
+            });
+            Logger.info('WEBRTC', 'All local stream tracks added to PeerConnection');
+        } else {
+            Logger.warn('WEBRTC', 'No local stream available when creating PeerConnection');
         }
-    };
 
-    peerConnection.onnegotiationneeded = async () => {
-        console.log('Negotiation needed. Creating offer...');
-        try {
-            const offer = await peerConnection.createOffer();
-            await peerConnection.setLocalDescription(offer);
-            sendMessage('offer', { sdp: offer.sdp });
-            console.log('Sent offer to SFU.');
-        } catch (error) {
-            console.error('Error creating or sending offer:', error);
-        }
-    };
+        //review for ways to recieve ice candidates to see if you can start mining(receive/send)
+        peerConnection.onicecandidate = (event) => {
+            if (event.candidate) {
+                Logger.debug('WEBRTC', 'ICE candidate generated', {
+                  candidateType: event.candidate.type,
+                  candidateProtocol: event.candidate.protocol,
+                  candidateAddress: event.candidate.address
+                });
+                sendMessage('candidate', { candidate: event.candidate , clientID: user.id, meetingID: meetingID});
+            } else {
+                Logger.info('WEBRTC', 'ICE candidate gathering complete');
+            }
+        };
+
+        peerConnection.ontrack = (event) => {
+            Logger.info('WEBRTC', 'Remote track received', {
+              trackKind: event.track.kind,
+              trackId: event.track.id,
+              streamId: event.streams[0]?.id
+            });
+            
+            const remoteStream = event.streams[0];
+            if (remoteStream) {
+                // Use a more reliable way to identify remote peers
+                // The SFU should send participant information
+                const remotePeerId = event.track.id || `peer-${Date.now()}`;
+                // Try to get participant name from the track metadata or use a default
+                const participantName = event.track.label || `Participant ${remotePeerId.slice(0, 8)}`;
+                addRemoteVideo(remotePeerId, remoteStream, participantName);
+            } else {
+                Logger.warn('WEBRTC', 'Remote track received but no stream available');
+            }
+        };
+
+        peerConnection.onconnectionstatechange = () => {
+            const newState = peerConnection.connectionState;
+            Logger.info('WEBRTC', 'PeerConnection state changed', {
+              previousState: AppState.peerConnectionState,
+              newState: newState
+            });
+            
+            AppState.updateState({ peerConnectionState: newState });
+            
+            if (newState === 'disconnected' || newState === 'failed' || newState === 'closed') {
+                Logger.warn('WEBRTC', 'PeerConnection disconnected or failed, cleaning up');
+                cleanupWebRTC();
+            }
+        };
+
+        peerConnection.onnegotiationneeded = async () => {
+            Logger.info('WEBRTC', 'Negotiation needed, creating offer');
+            try {
+                const offer = await peerConnection.createOffer();
+                await peerConnection.setLocalDescription(offer);
+                Logger.info('WEBRTC', 'Local description set, sending offer to signaling server');
+                sendMessage('offer', { sdp: offer.sdp });
+                Logger.info('WEBRTC', 'Offer sent to SFU successfully');
+            } catch (error) {
+                Logger.error('WEBRTC', 'Error creating or sending offer', error);
+            }
+        };
+
+        Logger.info('WEBRTC', 'PeerConnection event handlers configured successfully');
+        
+    } catch (error) {
+        Logger.error('WEBRTC', 'Failed to create PeerConnection', error);
+        throw error;
+    }
 }
 
 async function handleSignalingMessage(message) {
-    if (!peerConnection) {
-        console.warn('PeerConnection not initialized. Ignoring signaling message.');
-        return;
-    }
+    Logger.debug('SIGNALING', 'Processing signaling message', {
+      type: message.type,
+      hasPayload: !!message.payload
+    });
 
-    if (message.type === 'answer') {
-        console.log('Received answer from SFU.');
-        await peerConnection.setRemoteDescription(new RTCSessionDescription(message.payload));
-    } else if (message.type === 'candidate') {
-        console.log('Received ICE candidate from SFU.');
-        try {
-            // **ICE Candidate Exchange**
-            // Add the received candidate to our PeerConnection.
-            // The WebRTC engine will then use this candidate to try and establish a connection.
-            await peerConnection.addIceCandidate(new RTCIceCandidate(message.payload.candidate));
-        } catch (e) {
-            console.error('Error adding received ICE candidate:', e);
+    try {
+        // For WebRTC messages, we need a PeerConnection
+        if ((message.type === 'answer' || message.type === 'offer' || message.type === 'candidate') && !peerConnection) {
+            Logger.warn('SIGNALING', 'PeerConnection not initialized, ignoring WebRTC message', {
+                type: message.type
+            });
+            return;
         }
-    } else if (message.type === 'chat') {
-        console.log('Received chat message:', message.payload);
-        // Don't display our own messages twice
-        if (message.payload.senderId !== user.id) {
-            addChatMessageToDisplay(message.payload);
+
+        if (message.type === 'answer') {
+            Logger.info('SIGNALING', 'Received answer from SFU', {
+              payload: message.payload,
+              payloadType: typeof message.payload,
+              hasType: !!message.payload?.type,
+              hasSdp: !!message.payload?.sdp
+            });
+            await peerConnection.setRemoteDescription(new RTCSessionDescription(message.payload));
+            Logger.info('SIGNALING', 'Remote description set from answer');
+            
+            // Process any buffered ICE candidates
+            while (RemoteIceCandidates.length > 0) {
+                await peerConnection.addIceCandidate(new RTCIceCandidate(RemoteIceCandidates.shift()));
+            }
+            Logger.info('SIGNALING', 'Processed buffered ICE candidates', { count: RemoteIceCandidates.length });
+        } else if (message.type === 'offer') {
+            Logger.info('SIGNALING', 'Received renegotiation offer from SFU');
+            await peerConnection.setRemoteDescription(new RTCSessionDescription(message.payload));
+            const answer = await peerConnection.createAnswer();
+            await peerConnection.setLocalDescription(answer);
+            while (RemoteIceCandidates.length > 0) {
+              await peerConnection.addIceCandidate(new RTCIceCandidate(RemoteIceCandidates.shift()));
+            }
+            sendMessage('answer', { sdp: answer.sdp });
+            Logger.info('SIGNALING', 'Renegotiation answer sent to SFU');
+        } else if (message.type === 'candidate') {
+            Logger.debug('SIGNALING', 'Received ICE candidate from SFU');
+            try {
+                // **ICE Candidate Exchange**
+                // Add the received candidate to our PeerConnection.
+                // The WebRTC engine will then use this candidate to try and establish a connection.
+
+                if (peerConnection && peerConnection.remoteDescription) {
+                  await peerConnection.addIceCandidate(new RTCIceCandidate(message.payload));
+                } else {
+                  RemoteIceCandidates.push(message.payload);
+                  Logger.debug('SIGNALING', 'ICE candidate buffered', { 
+                    bufferedCount: RemoteIceCandidates.length,
+                    hasPeerConnection: !!peerConnection,
+                    hasRemoteDescription: !!(peerConnection && peerConnection.remoteDescription)
+                  });
+                }
+                Logger.debug('SIGNALING', 'ICE candidate added to PeerConnection');
+            } catch (e) {
+
+                Logger.error('SIGNALING', 'Error adding received ICE candidate', e, {
+                  payload: message.payload
+                });
+            }
+        } else if (message.type === 'chat') {
+            Logger.info('SIGNALING', 'Received chat message', {
+              senderId: message.payload.senderId,
+              messageLength: message.payload.message?.length
+            });
+            // Don't display our own messages twice
+            if (message.payload.senderId !== user.id) {
+                addChatMessageToDisplay(message.payload);
+            }
+        } else if (message.type === 'meetingEvent') {
+            Logger.info('SIGNALING', 'Received meeting event', {
+              eventType: message.payload.type,
+              clientId: message.payload.payload?.clientId
+            });
+            
+            if (message.payload.type === 'clientLeft') {
+                const clientId = message.payload.payload.clientId;
+                Logger.info('SIGNALING', 'Client left meeting, cleaning up remote video', { clientId });
+                removeRemoteVideo(clientId);
+            } else if (message.payload.type === 'clientJoined') {
+                const clientId = message.payload.payload.clientId;
+                const clientName = message.payload.payload.name || `Participant ${clientId.slice(0, 8)}`;
+                Logger.info('SIGNALING', 'Client joined meeting', { clientId, clientName });
+                // Don't add video here - it will be added when we receive the track
+            }
+        } else if (message.type === 'meetingJoined') {
+            Logger.info('SIGNALING', 'Meeting joined confirmation received', {
+              meetingId: message.payload.meetingId,
+              success: message.payload.success
+            });
+            
+            // Now that we've confirmed we're in the meeting, create the PeerConnection
+            if (message.payload.success) {
+                Logger.info('SIGNALING', 'Creating PeerConnection after meeting confirmation');
+                createPeerConnection();
+            }
+        } else if (message.type === 'error') {
+            Logger.error('SIGNALING', 'Signaling error from server', null, {
+              errorMessage: message.payload.message
+            });
+            alert('Server Error: ' + message.payload.message);
+        } else {
+            Logger.warn('SIGNALING', 'Unknown message type received', null, {
+              type: message.type,
+              payload: message.payload
+            });
         }
-    } else if (message.type === 'meetingEvent') {
-        console.log('Received meeting event:', message.payload);
-        if (message.payload.type === 'clientLeft') {
-            const clientId = message.payload.payload.clientId;
-            console.warn(`Client ${clientId} left. Cleaning up remote video.`);
-            removeRemoteVideo(clientId);
-        } else if (message.payload.type === 'clientJoined') {
-            const clientId = message.payload.payload.clientId;
-            const clientName = message.payload.payload.name || `Participant ${clientId.slice(0, 8)}`;
-            console.log(`Client ${clientName} joined the meeting.`);
-        }
-    } else if (message.type === 'error') {
-        console.error('Signaling error from server:', message.payload.message);
-        alert('Server Error: ' + message.payload.message);
+    } catch (error) {
+        Logger.error('SIGNALING', 'Error handling signaling message', error, {
+          messageType: message.type,
+          messagePayload: message.payload
+        });
     }
 }
 
 function InitializeSocketConnection() {
-  const signalingUrl = sessionStorage.getItem('assignedSignalingServerUrl');
+  Logger.info('WEBSOCKET', 'Initializing WebSocket connection');
+  
+  let signalingUrl = sessionStorage.getItem('assignedSignalingServerUrl');
   if (!signalingUrl) {
-    console.error('No signaling server URL found in session storage');
-    return;
+    Logger.warn('WEBSOCKET', 'No signaling server URL found in session storage, using default');
+    signalingUrl = 'ws://localhost:8080';
   }
   
-  ws = new WebSocket(signalingUrl);
-  ws.onopen = () => {
-    console.info('Connected to signaling server:', signalingUrl);
-    // Register client with signaling server (this tells THIS signaling server who we are)
-    sendMessage('register', { id: user.id, role: 'client' });
-    // Join the specific meeting (this tells THIS signaling server about our meeting context)
-    sendMessage('joinMeeting', { meetingId: meetingID });
-    // Create PeerConnection after local stream and WS are ready
-    createPeerConnection();
-  };
-  
-  ws.onmessage = (event) => {
-    const message = JSON.parse(event.data);
-    handleSignalingMessage(message);
-  };
-  
-  ws.onclose = () => {
-    console.log('Disconnected from signaling server.');
-    cleanupWebRTC();
-  }
-  
-  ws.onerror = (error) => {
-    console.error('WebSocket error:', error);
+  Logger.info('WEBSOCKET', 'WebSocket creation initiated', { signalingUrl });
+
+  try {
+    ws = new WebSocket(signalingUrl);
+    
+    ws.onopen = () => {
+      Logger.info('WEBSOCKET', 'Connected to signaling server', {
+        url: signalingUrl,
+        readyState: ws.readyState
+      });
+      
+      AppState.updateState({ connectionState: 'connected' });
+      
+      // Register client with signaling server (this tells THIS signaling server who we are)
+      sendMessage('register', { id: user.id, role: 'client' });
+      // Join the specific meeting (this tells THIS signaling server about our meeting context)
+      sendMessage('joinMeeting', { meetingId: meetingID });
+      // Create PeerConnection after local stream and WS are ready
+
+      
+      // Display connection status
+      const connectionStatus = {
+        signalingServer: signalingUrl,
+        meetingId: meetingID,
+        userId: user.id,
+        peerConnectionState: peerConnection ? peerConnection.connectionState : 'not created'
+      };
+      
+      Logger.info('WEBSOCKET', 'Connection status', connectionStatus);
+    };
+    
+    ws.onmessage = (event) => {
+      try {
+        const message = JSON.parse(event.data);
+        Logger.debug('WEBSOCKET', 'Received message from signaling server', {
+          messageType: message.type,
+          messageSize: event.data.length,
+          messagePayload: message.payload
+        });
+        handleSignalingMessage(message);
+      } catch (error) {
+        Logger.error('WEBSOCKET', 'Failed to parse received message', error, {
+          rawData: event.data
+        });
+      }
+    };
+    
+    ws.onclose = (event) => {
+      Logger.info('WEBSOCKET', 'Disconnected from signaling server', {
+        code: event.code,
+        reason: event.reason,
+        wasClean: event.wasClean
+      });
+      
+      AppState.updateState({ connectionState: 'disconnected' });
+      cleanupWebRTC();
+    }
+    
+    ws.onerror = (error) => {
+      Logger.error('WEBSOCKET', 'WebSocket error occurred', error);
+      AppState.updateState({ connectionState: 'error' });
+    }
+    
+    Logger.info('WEBSOCKET', 'WebSocket event handlers configured');
+    
+  } catch (error) {
+    Logger.error('WEBSOCKET', 'Failed to create WebSocket connection', error, {
+      signalingUrl
+    });
   }
 }
 
 // Remove the duplicate WebSocket handler and PeerConnection that were causing conflicts
 
 function closeStream() {
-    const mainVideo = document.getElementById('mainVideo');
-    const screenVideo = document.getElementById('screenVideo');
-    mainVideo.srcObject = null;
-    document.getElementById('meetingId').textContent = 'N/A';
-    document.getElementById('meetingTitle').textContent = 'Meeting Room';
-    document.getElementById('copyMeetingIdBtn').disabled = true;
-    document.getElementById('copyMeetingIdBtn').classList.add('opacity-50');
-    document.getElementById('copyMeetingIdBtn').classList.remove('cursor-pointer');
-    document.getElementById('copyMeetingIdBtn').classList.remove('hover:bg-gray-700');
-    document.getElementById('copyMeetingIdBtn').classList.remove('hover:text-white');
-    document.getElementById('copyMeetingIdBtn').classList.remove('hover:text-gray-400');
-  
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      sendMessage('leaveMeeting', { meetingId: meetingID });
-      ws.close();
-    } else {
-      cleanupWebRTC();
+    Logger.info('STREAM', 'Closing stream and cleaning up meeting');
+    
+    try {
+        const mainVideo = document.getElementById('mainVideo');
+        const screenVideo = document.getElementById('screenVideo');
+        mainVideo.srcObject = null;
+        document.getElementById('meetingId').textContent = 'N/A';
+        document.getElementById('meetingTitle').textContent = 'Meeting Room';
+        document.getElementById('copyMeetingIdBtn').disabled = true;
+        document.getElementById('copyMeetingIdBtn').classList.add('opacity-50');
+        document.getElementById('copyMeetingIdBtn').classList.remove('cursor-pointer');
+        document.getElementById('copyMeetingIdBtn').classList.remove('hover:bg-gray-700');
+        document.getElementById('copyMeetingIdBtn').classList.remove('hover:text-white');
+        document.getElementById('copyMeetingIdBtn').classList.remove('hover:text-gray-400');
+        
+        Logger.info('STREAM', 'UI elements reset for stream closure');
+      
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          Logger.info('STREAM', 'Sending leave meeting message and closing WebSocket');
+          sendMessage('leaveMeeting', { meetingId: meetingID });
+          ws.close();
+        } else {
+          Logger.info('STREAM', 'WebSocket not available, cleaning up WebRTC directly');
+          cleanupWebRTC();
+        }
+    } catch (error) {
+        Logger.error('STREAM', 'Error during stream closure', error);
     }
 }
 
 async function copyMeetingId() {
+    Logger.debug('UI', 'Copy meeting ID action initiated');
+    
     const meetingIdElement = document.getElementById('meetingId');
     const copyButton = document.getElementById('copyMeetingIdBtn');
     const copyIcon = copyButton.querySelector('i');
@@ -336,12 +808,15 @@ async function copyMeetingId() {
     const meetingId = meetingIdText.replace('ID: ', '');
     
     if (meetingId === 'Loading...') {
+      Logger.warn('UI', 'Attempted to copy meeting ID while still loading');
       return; // Don't copy if still loading
     }
     
     try {
       // Copy to clipboard
       await navigator.clipboard.writeText(meetingId);
+      
+      Logger.info('UI', 'Meeting ID copied to clipboard successfully', { meetingId });
       
       // Visual feedback - change icon to checkmark
       copyIcon.className = 'fas fa-check text-sm';
@@ -355,60 +830,114 @@ async function copyMeetingId() {
         copyButton.classList.remove('text-green-400');
         copyButton.classList.add('text-gray-400', 'hover:text-white');
         copyButton.title = 'Copy meeting ID';
+        Logger.debug('UI', 'Copy button reset to original state');
       }, 2000);
       
     } catch (err) {
-      console.error('Failed to copy meeting ID:', err);
+      Logger.error('UI', 'Failed to copy meeting ID using clipboard API', err, { meetingId });
       
       // Fallback for older browsers
-      const textArea = document.createElement('textarea');
-      textArea.value = meetingId;
-      document.body.appendChild(textArea);
-      textArea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textArea);
-      
-      // Still show success feedback
-      copyIcon.className = 'fas fa-check text-sm';
-      copyButton.classList.remove('text-gray-400', 'hover:text-white');
-      copyButton.classList.add('text-green-400');
-      copyButton.title = 'Copied!';
-      
-      setTimeout(() => {
-        copyIcon.className = 'fas fa-copy text-sm';
-        copyButton.classList.remove('text-green-400');
-        copyButton.classList.add('text-gray-400', 'hover:text-white');
-        copyButton.title = 'Copy meeting ID';
-      }, 2000);
+      try {
+        const textArea = document.createElement('textarea');
+        textArea.value = meetingId;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        
+        Logger.info('UI', 'Meeting ID copied using fallback method', { meetingId });
+        
+        // Still show success feedback
+        copyIcon.className = 'fas fa-check text-sm';
+        copyButton.classList.remove('text-gray-400', 'hover:text-white');
+        copyButton.classList.add('text-green-400');
+        copyButton.title = 'Copied!';
+        
+        setTimeout(() => {
+          copyIcon.className = 'fas fa-copy text-sm';
+          copyButton.classList.remove('text-green-400');
+          copyButton.classList.add('text-gray-400', 'hover:text-white');
+          copyButton.title = 'Copy meeting ID';
+        }, 2000);
+      } catch (fallbackError) {
+        Logger.error('UI', 'Fallback copy method also failed', fallbackError, { meetingId });
+      }
     }
 }
 
 function cleanupWebRTC() {
-  if (localStream) {
-    localStream.getTracks().forEach(track => track.stop());
-    localStream = null;
+  Logger.info('CLEANUP', 'Starting WebRTC cleanup');
+  
+  try {
+    if (localStream) {
+      const trackCount = localStream.getTracks().length;
+      localStream.getTracks().forEach(track => {
+        Logger.debug('CLEANUP', 'Stopping local track', {
+          trackKind: track.kind,
+          trackId: track.id
+        });
+        track.stop();
+      });
+      localStream = null;
+      Logger.info('CLEANUP', 'Local stream tracks stopped', { trackCount });
+    }
+    
+    if (localVideo) {
+      localVideo.srcObject = null;
+      Logger.debug('CLEANUP', 'Local video element cleared');
+    }
+    
+    if (peerConnection) {
+      const previousState = peerConnection.connectionState;
+      peerConnection.close();
+      peerConnection = null;
+      Logger.info('CLEANUP', 'PeerConnection closed', { previousState });
+    }
+    
+    const remoteVideoCount = remoteVideoElements.size;
+    remoteVideoElements.forEach(video => {
+      const container = video.closest('.participant-video');
+      if (container) {
+        container.remove();
+      }
+    });
+    remoteVideoElements.clear();
+    remoteParticipants.clear();
+    
+    Logger.info('CLEANUP', 'WebRTC resources cleaned up', {
+      remoteVideosRemoved: remoteVideoCount,
+      participantsCleared: remoteParticipants.size
+    });
+    
+    AppState.updateState({ 
+      localStreamState: 'cleaned',
+      peerConnectionState: 'closed',
+      connectionState: 'disconnected'
+    });
+    
+  } catch (error) {
+    Logger.error('CLEANUP', 'Error during WebRTC cleanup', error);
   }
-  if (localVideo) {
-    localVideo.srcObject = null;
-  }
-  if (peerConnection) {
-    peerConnection.close();
-    peerConnection = null;
-  }
-  remoteVideoElements.forEach(video => video.closest('.participant-video').remove());
-  remoteVideoElements.clear();
-  remoteParticipants.clear();
-  console.log('WebRTC resources cleaned up.');
 }
 
 //get the screen stream
 async function getSharedScreenStream() {
+  Logger.info('SCREEN', 'Requesting screen sharing sources');
+  
   try {
     console.log("Requesting sources...");
     const sources = await window.electronAPI.getScreenSources();
-    console.log("Sources:", sources);
+    Logger.info('SCREEN', 'Screen sources retrieved', {
+      sourceCount: sources.length,
+      sources: sources.map(s => ({ id: s.id, name: s.name, thumbnail: !!s.thumbnail }))
+    });
 
     const source = sources[1];
+    if (!source) {
+      throw new Error('No screen source available');
+    }
+
+    Logger.info('SCREEN', 'Selected screen source', { sourceId: source.id, sourceName: source.name });
 
     const stream = await navigator.mediaDevices.getUserMedia({
       audio: false,
@@ -420,21 +949,32 @@ async function getSharedScreenStream() {
       }
     });
 
+    Logger.info('SCREEN', 'Screen sharing stream obtained', {
+      videoTracks: stream.getVideoTracks().length,
+      audioTracks: stream.getAudioTracks().length
+    });
+
     const video = document.getElementById('screenVideo');
     video.srcObject = stream;
     video.play();
+    
+    Logger.info('SCREEN', 'Screen sharing video attached to DOM');
+    
   } catch (err) {
-    console.error("Error accessing screen stream:", err);
+    Logger.error('SCREEN', 'Error accessing screen stream', err);
   }
 }
 
 function setupChatHandlers() {
+  Logger.info('CHAT', 'Setting up chat input handlers');
+  
   const chatInput = document.getElementById('chatInput');
   if (chatInput) {
     // Handle Enter key press
     chatInput.addEventListener('keypress', function(e) {
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
+        Logger.debug('CHAT', 'Enter key pressed, sending message');
         sendChatMessage();
       }
     });
@@ -443,7 +983,14 @@ function setupChatHandlers() {
     const sendButton = document.querySelector('button[onclick="sendMessage()"]');
     if (sendButton) {
       sendButton.onclick = sendChatMessage;
+      Logger.debug('CHAT', 'Send button click handler attached');
+    } else {
+      Logger.warn('CHAT', 'Send button not found in DOM');
     }
+    
+    Logger.info('CHAT', 'Chat input handlers configured successfully');
+  } else {
+    Logger.error('CHAT', 'Chat input element not found in DOM');
   }
 }
 
@@ -451,7 +998,12 @@ function sendChatMessage() {
   const chatInput = document.getElementById('chatInput');
   const message = chatInput.value.trim();
   
-  if (!message) return;
+  if (!message) {
+    Logger.debug('CHAT', 'Empty message, ignoring send request');
+    return;
+  }
+  
+  Logger.info('CHAT', 'Sending chat message', { messageLength: message.length });
   
   // Create message object
   const chatMessage = {
@@ -471,11 +1023,25 @@ function sendChatMessage() {
   
   // Clear input
   chatInput.value = '';
+  
+  Logger.debug('CHAT', 'Chat message sent and displayed locally', {
+    messageId: chatMessage.id,
+    senderName: chatMessage.senderName
+  });
 }
 
 function addChatMessageToDisplay(messageData) {
+  Logger.debug('CHAT', 'Adding chat message to display', {
+    messageId: messageData.id,
+    senderId: messageData.senderId,
+    isOwnMessage: messageData.senderId === user.id
+  });
+  
   const chatMessagesContainer = document.getElementById('chatMessages');
-  if (!chatMessagesContainer) return;
+  if (!chatMessagesContainer) {
+    Logger.error('CHAT', 'Chat messages container not found in DOM');
+    return;
+  }
   
   const messageElement = document.createElement('div');
   messageElement.className = 'chat-message';
@@ -511,6 +1077,12 @@ function addChatMessageToDisplay(messageData) {
   
   // Store message in local array
   chatMessages.push(messageData);
+  AppState.chatMessages = chatMessages;
+  
+  Logger.debug('CHAT', 'Chat message added to display', {
+    messageId: messageData.id,
+    totalMessages: chatMessages.length
+  });
 }
 
 function escapeHtml(text) {
@@ -522,4 +1094,54 @@ function escapeHtml(text) {
 function generateMessageId() {
   return Date.now().toString(36) + Math.random().toString(36).substr(2);
 }
+
+// Export logging utilities for debugging
+window.Logger = Logger;
+window.AppState = AppState;
+
+// // Make Logger and AppState globally accessible for debugging
+// window.Logger = Logger;
+// window.AppState = AppState;
+
+// Add helper functions for debugging
+window.debugClient = {
+  // Show current app state
+  showState: () => {
+    console.log('📊 Current App State:', AppState.getState());
+    return AppState.getState();
+  },
+  
+  // Show logger stats
+  showLoggerStats: () => {
+    console.log('📊 Logger Level:', Logger.currentLevel);
+    console.log('📊 Available Levels:', Logger.levels);
+    return { level: Logger.currentLevel, levels: Logger.levels };
+  },
+  
+  // Set logger level
+  setLogLevel: (level) => {
+    if (Logger.levels[level] !== undefined) {
+      Logger.currentLevel = Logger.levels[level];
+      console.log(`📊 Logger level set to: ${level}`);
+      return true;
+    } else {
+      console.error(`❌ Invalid log level: ${level}. Available: ${Object.keys(Logger.levels).join(', ')}`);
+      return false;
+    }
+  },
+  
+  // Test all log levels
+  testLogs: () => {
+    console.log('🧪 Testing all log levels...');
+    Logger.debug('DEBUG_TEST', 'This is a debug message', { test: true });
+    Logger.info('INFO_TEST', 'This is an info message', { test: true });
+    Logger.warn('WARN_TEST', 'This is a warning message', { test: true });
+    Logger.error('ERROR_TEST', 'This is an error message', new Error('Test error'), { test: true });
+  }
+};
+
+console.log('🔧 Debug helpers available: window.debugClient.showState(), window.debugClient.testLogs(), etc.');
+
+// Log initial application state
+Logger.info('APP', 'Application initialized', AppState.getState());
 
