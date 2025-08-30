@@ -120,11 +120,12 @@
       
           // Chat functionality is now handled in meeting-sfu.js
           // This function is kept for backward compatibility but delegates to the new implementation
-          function sendMessage() {
-            if (typeof sendChatMessage === 'function') {
-              sendChatMessage();
-            }
-          }
+          // function sendMessage() {
+          //   console.log("In wrong function");
+          //   if (typeof sendChatMessage === 'function') {
+          //     sendChatMessage();
+          //   }
+          // }
     
       
           // Go back to home

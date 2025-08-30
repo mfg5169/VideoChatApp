@@ -1,0 +1,1 @@
+docker-compose up kafka1 kafka2 kafka3 zookeeper -d

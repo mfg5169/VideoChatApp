@@ -33,7 +33,7 @@ if (!fsSync.existsSync(filePath)) {
   console.log("filePath: ", filePath);
 
   try {
-    generateAndSaveJWTSecret(passphrase); // One-time setup
+    generateAndSaveJWTSecret(passphrase); 
   } catch (error) {
     console.log("passphrase: ", passphrase);
     console.error("Error generating and saving JWT secret:", error);

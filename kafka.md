@@ -14,16 +14,16 @@
 ### Check Cluster Health
 ```bash
 # Check cluster info
-docker exec -it kafka1 kafka-topics.sh --bootstrap-server kafka1:9092 --describe
+docker exec -it kafka1 kafka-topics --bootstrap-server kafka1:9092 --describe
 
 # Check broker info
-docker exec -it kafka1 kafka-broker-api-versions.sh --bootstrap-server kafka1:9092
+docker exec -it kafka1 kafka-broker-api-versions --bootstrap-server kafka1:9092
 
 # Check cluster ID
-docker exec -it kafka1 kafka-cluster.sh --bootstrap-server kafka1:9092 --cluster-id
+docker exec -it kafka1 kafka-cluster --bootstrap-server kafka1:9092 --cluster-id
 
 # Check controller info
-docker exec -it kafka1 kafka-metadata-shell.sh --snapshot /tmp/kafka-logs/meta.snapshot
+docker exec -it kafka1 kafka-metadata-shell --snapshot /tmp/kafka-logs/meta.snapshot
 ```
 
 ### Check Zookeeper Status
@@ -43,37 +43,37 @@ docker exec -it zookeeper zkCli.sh ls /
 ### List Topics
 ```bash
 # List all topics
-kafka-topics.sh --bootstrap-server kafka1:9092 --list
+docker exec -it kafka1 kafka-topics --bootstrap-server kafka1:9092 --list
 
 # List topics with details
-kafka-topics.sh --bootstrap-server kafka1:9092 --describe
+docker exec -it kafka1 kafka-topics --bootstrap-server kafka1:9092 --describe
 
 # List topics with specific pattern
-kafka-topics.sh --bootstrap-server kafka1:9092 --list | grep sfu
+docker exec -it kafka1 kafka-topics --bootstrap-server kafka1:9092 --list | grep sfu
 ```
 
 ### Topic Details
 ```bash
 # Describe specific topic
-kafka-topics.sh --bootstrap-server kafka1:9092 --describe --topic sfu_commands
+docker exec -it kafka1 kafka-topics --bootstrap-server kafka1:9092 --describe --topic sfu_commands
 
 # Show topic configuration
-kafka-configs.sh --bootstrap-server kafka1:9092 --entity-type topics --entity-name sfu_commands --describe
+docker exec -it kafka1 kafka-configs --bootstrap-server kafka1:9092 --entity-type topics --entity-name sfu_commands --describe
 
 # Show topic offsets
-kafka-run-class.sh kafka.tools.GetOffsetShell --bootstrap-server kafka1:9092 --topic sfu_commands --time -1
+docker exec -it kafka1 kafka-run-class kafka.tools.GetOffsetShell --bootstrap-server kafka1:9092 --topic sfu_commands --time -1
 ```
 
 ### Create/Delete Topics
 ```bash
 # Create topic
-kafka-topics.sh --bootstrap-server kafka1:9092 --create --topic sfu_commands --partitions 3 --replication-factor 2
+docker exec -it kafka1 kafka-topics --bootstrap-server kafka1:9092 --create --topic sfu_commands --partitions 3 --replication-factor 2
 
 # Delete topic
-kafka-topics.sh --bootstrap-server kafka1:9092 --delete --topic sfu_commands
+docker exec -it kafka1 kafka-topics --bootstrap-server kafka1:9092 --delete --topic sfu_commands
 
 # Alter topic partitions
-kafka-topics.sh --bootstrap-server kafka1:9092 --alter --topic sfu_commands --partitions 5
+docker exec -it kafka1 kafka-topics --bootstrap-server kafka1:9092 --alter --topic sfu_commands --partitions 5
 ```
 
 ## Message Inspection
@@ -81,43 +81,46 @@ kafka-topics.sh --bootstrap-server kafka1:9092 --alter --topic sfu_commands --pa
 ### Consume Messages
 ```bash
 # Consume messages from beginning
-docker exec -it kafka1 kafka-console-consumer.sh --bootstrap-server kafka1:9092 --topic sfu_commands --from-beginning
+docker exec -it kafka1 kafka-console-consumer --bootstrap-server kafka1:9092 --topic sfu_commands --from-beginning
 
 # Consume messages with key
-docker exec -it kafka1 kafka-console-consumer.sh --bootstrap-server kafka1:9092 --topic sfu_commands --from-beginning --property print.key=true
+docker exec -it kafka1 kafka-console-consumer --bootstrap-server kafka1:9092 --topic sfu_commands --from-beginning --property print.key=true
 
 # Consume messages with timestamp
-docker exec -it kafka1 kafka-console-consumer.sh --bootstrap-server kafka1:9092 --topic sfu_commands --from-beginning --property print.timestamp=true
+docker exec -it kafka1 kafka-console-consumer --bootstrap-server kafka1:9092 --topic sfu_commands --from-beginning --property print.timestamp=true
 
 # Consume specific partition
-docker exec -it kafka1 kafka-console-consumer.sh --bootstrap-server kafka1:9092 --topic sfu_commands --partition 0 --from-beginning
+docker exec -it kafka1 kafka-console-consumer --bootstrap-server kafka1:9092 --topic sfu_commands --partition 0 --from-beginning
+
+# Consume with max messages limit (useful for debugging)
+docker exec -it kafka1 kafka-console-consumer --bootstrap-server kafka1:9092 --topic sfu_commands --from-beginning --max-messages 5
 ```
 
 ### Produce Messages
 ```bash
 # Produce message
-kafka-console-producer.sh --bootstrap-server kafka1:9092 --topic sfu_commands
+docker exec -it kafka1 kafka-console-producer --bootstrap-server kafka1:9092 --topic sfu_commands
 
 # Produce message with key
-kafka-console-producer.sh --bootstrap-server kafka1:9092 --topic sfu_commands --property "parse.key=true" --property "key.separator=:"
+docker exec -it kafka1 kafka-console-producer --bootstrap-server kafka1:9092 --topic sfu_commands --property "parse.key=true" --property "key.separator=:"
 
 # Example message format:
-# sfu-alpha:{"event": "prepareMeeting", "payload": {"MeetingID": "meeting123"}}
+# sfu-alpha:{"type": "prepareMeeting", "payload": {"meetingId": "meeting123"}}
 ```
 
 ### Message Analysis
 ```bash
 # Get message count
-kafka-run-class.sh kafka.tools.GetOffsetShell --bootstrap-server kafka1:9092 --topic sfu_commands --time -1
+docker exec -it kafka1 kafka-run-class kafka.tools.GetOffsetShell --bootstrap-server kafka1:9092 --topic sfu_commands --time -1
 
 # Get earliest offset
-kafka-run-class.sh kafka.tools.GetOffsetShell --bootstrap-server kafka1:9092 --topic sfu_commands --time -2
+docker exec -it kafka1 kafka-run-class kafka.tools.GetOffsetShell --bootstrap-server kafka1:9092 --topic sfu_commands --time -2
 
 # Get latest offset
-kafka-run-class.sh kafka.tools.GetOffsetShell --bootstrap-server kafka1:9092 --topic sfu_commands --time -1
+docker exec -it kafka1 kafka-run-class kafka.tools.GetOffsetShell --bootstrap-server kafka1:9092 --topic sfu_commands --time -1
 
 # Calculate lag
-kafka-consumer-groups.sh --bootstrap-server kafka1:9092 --describe --group your-consumer-group
+docker exec -it kafka1 kafka-consumer-groups --bootstrap-server kafka1:9092 --describe --group your-consumer-group
 ```
 
 ## Consumer Group Management
@@ -125,25 +128,28 @@ kafka-consumer-groups.sh --bootstrap-server kafka1:9092 --describe --group your-
 ### List Consumer Groups
 ```bash
 # List all consumer groups
-kafka-consumer-groups.sh --bootstrap-server kafka1:9092 --list
+docker exec -it kafka1 kafka-consumer-groups --bootstrap-server kafka1:9092 --list
 
 # Describe consumer group
-kafka-consumer-groups.sh --bootstrap-server kafka1:9092 --describe --group your-consumer-group
+docker exec -it kafka1 kafka-consumer-groups --bootstrap-server kafka1:9092 --describe --group your-consumer-group
 
 # Show consumer group offsets
-kafka-consumer-groups.sh --bootstrap-server kafka1:9092 --describe --group your-consumer-group --offsets
+docker exec -it kafka1 kafka-consumer-groups --bootstrap-server kafka1:9092 --describe --group your-consumer-group --offsets
+
+# Describe specific consumer group (e.g., sfu-group)
+docker exec -it kafka1 kafka-consumer-groups --bootstrap-server kafka1:9092 --describe --group sfu-group
 ```
 
 ### Reset Consumer Group
 ```bash
 # Reset to earliest offset
-kafka-consumer-groups.sh --bootstrap-server kafka1:9092 --group your-consumer-group --topic sfu_commands --reset-offsets --to-earliest --execute
+docker exec -it kafka1 kafka-consumer-groups --bootstrap-server kafka1:9092 --group your-consumer-group --topic sfu_commands --reset-offsets --to-earliest --execute
 
 # Reset to latest offset
-kafka-consumer-groups.sh --bootstrap-server kafka1:9092 --group your-consumer-group --topic sfu_commands --reset-offsets --to-latest --execute
+docker exec -it kafka1 kafka-consumer-groups --bootstrap-server kafka1:9092 --group your-consumer-group --topic sfu_commands --reset-offsets --to-latest --execute
 
 # Reset to specific offset
-kafka-consumer-groups.sh --bootstrap-server kafka1:9092 --group your-consumer-group --topic sfu_commands --reset-offsets --to-offset 100 --execute
+docker exec -it kafka1 kafka-consumer-groups --bootstrap-server kafka1:9092 --group your-consumer-group --topic sfu_commands --reset-offsets --to-offset 100 --execute
 ```
 
 ## Performance & Monitoring
@@ -186,6 +192,53 @@ netstat -tlnp | grep 9092
 # Check Docker network
 docker network ls
 docker network inspect webrtc-net
+```
+
+## Debugging Commands (Used in This Project)
+
+### Check Current Topics and Messages
+```bash
+# List all topics
+docker exec -it kafka1 kafka-topics --bootstrap-server kafka1:9092 --list
+
+# Describe all topics with details
+docker exec -it kafka1 kafka-topics --bootstrap-server kafka1:9092 --describe
+
+# Check messages in sfu_commands topic
+docker exec -it kafka1 kafka-console-consumer --bootstrap-server kafka1:9092 --topic sfu_commands --from-beginning --max-messages 5
+
+# Check messages in meeting-events topic
+docker exec -it kafka1 kafka-console-consumer --bootstrap-server kafka1:9092 --topic meeting-events --from-beginning --max-messages 5
+```
+
+### Check Consumer Groups
+```bash
+# List all consumer groups
+docker exec -it kafka1 kafka-consumer-groups --bootstrap-server kafka1:9092 --list
+
+# Check sfu-group consumer details
+docker exec -it kafka1 kafka-consumer-groups --bootstrap-server kafka1:9092 --describe --group sfu-group
+
+# Check consumer lag
+docker exec -it kafka1 kafka-consumer-groups --bootstrap-server kafka1:9092 --describe --group sfu-group | grep -E "(TOPIC|PARTITION|LAG)"
+```
+
+### Test Message Production
+```bash
+# Test producing a message to sfu_commands
+echo 'sfu-alpha:{"type": "prepareMeeting", "payload": {"meetingId": "test-meeting-123"}}' | docker exec -i kafka1 kafka-console-producer --bootstrap-server kafka1:9092 --topic sfu_commands --property "parse.key=true" --property "key.separator=:"
+
+# Test producing a message to meeting-events
+echo 'meeting-123:{"event": "userJoined", "payload": {"userId": "user123", "meetingId": "meeting-123"}}' | docker exec -i kafka1 kafka-console-producer --bootstrap-server kafka1:9092 --topic meeting-events --property "parse.key=true" --property "key.separator=:"
+```
+
+### Debug Message Flow
+```bash
+# Monitor sfu_commands in real-time
+docker exec -it kafka1 kafka-console-consumer --bootstrap-server kafka1:9092 --topic sfu_commands --property print.key=true --property print.timestamp=true
+
+# Monitor meeting-events in real-time
+docker exec -it kafka1 kafka-console-consumer --bootstrap-server kafka1:9092 --topic meeting-events --property print.key=true --property print.timestamp=true
 ```
 
 ## Troubleshooting Common Issues
@@ -249,7 +302,7 @@ kafka-topics.sh --bootstrap-server kafka1:9092 --describe --under-replicated-par
 ```bash
 #!/bin/bash
 echo "=== Monitoring SFU Commands ==="
-kafka-console-consumer.sh --bootstrap-server kafka1:9092 --topic sfu_commands --from-beginning --property print.key=true --property print.timestamp=true
+docker exec -it kafka1 kafka-console-consumer --bootstrap-server kafka1:9092 --topic sfu_commands --from-beginning --property print.key=true --property print.timestamp=true
 ```
 
 ### Check Topic Health
@@ -259,11 +312,11 @@ echo "=== Topic Health Check ==="
 TOPIC="sfu_commands"
 echo "Topic: $TOPIC"
 echo "Partitions:"
-kafka-topics.sh --bootstrap-server kafka1:9092 --describe --topic $TOPIC
+docker exec -it kafka1 kafka-topics --bootstrap-server kafka1:9092 --describe --topic $TOPIC
 echo "Message count:"
-kafka-run-class.sh kafka.tools.GetOffsetShell --bootstrap-server kafka1:9092 --topic $TOPIC --time -1
+docker exec -it kafka1 kafka-run-class kafka.tools.GetOffsetShell --bootstrap-server kafka1:9092 --topic $TOPIC --time -1
 echo "Consumer groups:"
-kafka-consumer-groups.sh --bootstrap-server kafka1:9092 --list | grep sfu
+docker exec -it kafka1 kafka-consumer-groups --bootstrap-server kafka1:9092 --list | grep sfu
 ```
 
 ### Test Message Flow
@@ -271,13 +324,13 @@ kafka-consumer-groups.sh --bootstrap-server kafka1:9092 --list | grep sfu
 #!/bin/bash
 echo "=== Testing Message Flow ==="
 TOPIC="sfu_commands"
-MESSAGE='{"event": "prepareMeeting", "payload": {"MeetingID": "test-meeting-123"}}'
+MESSAGE='{"type": "prepareMeeting", "payload": {"meetingId": "test-meeting-123"}}'
 
 echo "Producing message to $TOPIC..."
-echo "sfu-alpha:$MESSAGE" | kafka-console-producer.sh --bootstrap-server kafka1:9092 --topic $TOPIC --property "parse.key=true" --property "key.separator=:"
+echo "sfu-alpha:$MESSAGE" | docker exec -i kafka1 kafka-console-producer --bootstrap-server kafka1:9092 --topic $TOPIC --property "parse.key=true" --property "key.separator=:"
 
 echo "Consuming messages from $TOPIC..."
-timeout 10s kafka-console-consumer.sh --bootstrap-server kafka1:9092 --topic $TOPIC --from-beginning --property print.key=true --max-messages 1
+timeout 10s docker exec -it kafka1 kafka-console-consumer --bootstrap-server kafka1:9092 --topic $TOPIC --from-beginning --property print.key=true --max-messages 1
 ```
 
 ### Check Cluster Status
@@ -287,9 +340,9 @@ echo "=== Kafka Cluster Status ==="
 echo "Brokers:"
 docker ps | grep kafka
 echo "Topics:"
-kafka-topics.sh --bootstrap-server kafka1:9092 --list
+docker exec -it kafka1 kafka-topics --bootstrap-server kafka1:9092 --list
 echo "Consumer Groups:"
-kafka-consumer-groups.sh --bootstrap-server kafka1:9092 --list
+docker exec -it kafka1 kafka-consumer-groups --bootstrap-server kafka1:9092 --list
 echo "Zookeeper:"
 docker ps | grep zookeeper
 ```
@@ -320,7 +373,7 @@ KAFKA_RETRIES=3
 - **Topic**: `sfu_commands`
 - **Key**: SFU ID (e.g., `sfu-alpha`)
 - **Value**: JSON command object
-- **Example**: `{"event": "prepareMeeting", "payload": {"MeetingID": "meeting123"}}`
+- **Example**: `{"type": "prepareMeeting", "payload": {"meetingId": "meeting123"}}`
 
 ### Message Types
 - `prepareMeeting` - Prepare SFU for meeting

@@ -12,6 +12,12 @@ services:
       - "16379:16379" # Cluster bus port
     networks:
       - webrtc-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
   redis-node-2:
     image: redis/redis-stack-server:latest
@@ -23,6 +29,12 @@ services:
       - "16380:16379"
     networks:
       - webrtc-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
   #service name
   redis-node-3:
@@ -50,6 +62,12 @@ services:
     networks:
       #webrtc-net is the name of the network
       - webrtc-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
   #service name
   redis-node-4:
@@ -62,6 +80,12 @@ services:
       - "16382:16379"
     networks:
       - webrtc-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
   #service name
   redis-node-5:
@@ -74,6 +98,12 @@ services:
       - "16383:16379"
     networks:
       - webrtc-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
   #service name
   redis-node-6:
@@ -86,6 +116,12 @@ services:
       - "16384:16379"
     networks:
       - webrtc-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
   # Redis Cluster Setup Service
   redis-cluster-setup:
@@ -96,12 +132,18 @@ services:
     networks:
       - webrtc-net
     depends_on:
-      - redis-node-1
-      - redis-node-2
-      - redis-node-3
-      - redis-node-4
-      - redis-node-5
-      - redis-node-6
+      redis-node-1:
+        condition: service_healthy
+      redis-node-2:
+        condition: service_healthy
+      redis-node-3:
+        condition: service_healthy
+      redis-node-4:
+        condition: service_healthy
+      redis-node-5:
+        condition: service_healthy
+      redis-node-6:
+        condition: service_healthy
     restart: "no"
 
   # Orchestration Service (New Node.js API Server)
@@ -137,14 +179,22 @@ services:
       - webrtc-net
       - kafka-cluster
     depends_on:
-      - redis-cluster-setup
-      - redis-sfu-cluster-setup
-      - zookeeper
-      - kafka1
-      - kafka2
-      - kafka3
-      - signaling-server-1 # Ensure signaling servers are up before orchestration
-      - signaling-server-2
+      redis-cluster-setup:
+        condition: service_completed_successfully
+      redis-sfu-cluster-setup:
+        condition: service_completed_successfully
+      zookeeper:
+        condition: service_started
+      kafka1:
+        condition: service_started
+      kafka2:
+        condition: service_started
+      kafka3:
+        condition: service_started
+      signaling-server-1:
+        condition: service_started
+      signaling-server-2:
+        condition: service_started
 
   # Multiple Signaling Server Instances (Node.js)
   signaling-server-1:
@@ -166,12 +216,18 @@ services:
       - webrtc-net
       - kafka-cluster
     depends_on:
-      - redis-cluster-setup
-      - redis-sfu-cluster-setup
-      - kafka1
-      - kafka2
-      - kafka3
-      - zookeeper
+      redis-cluster-setup:
+        condition: service_completed_successfully
+      redis-sfu-cluster-setup:
+        condition: service_completed_successfully
+      kafka1:
+        condition: service_started
+      kafka2:
+        condition: service_started
+      kafka3:
+        condition: service_started
+      zookeeper:
+        condition: service_started
 
 
   signaling-server-2:
@@ -192,12 +248,18 @@ services:
       - webrtc-net
       - kafka-cluster
     depends_on:
-      - redis-cluster-setup
-      - redis-sfu-cluster-setup
-      - kafka1
-      - kafka2
-      - kafka3
-      - zookeeper
+      redis-cluster-setup:
+        condition: service_completed_successfully
+      redis-sfu-cluster-setup:
+        condition: service_completed_successfully
+      kafka1:
+        condition: service_started
+      kafka2:
+        condition: service_started
+      kafka3:
+        condition: service_started
+      zookeeper:
+        condition: service_started
 
 
   # SFU Instances (Go)
@@ -340,6 +402,12 @@ services:
       - "16385:16379"
     networks:
       - webrtc-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
   redis-sfu-2:
     image: redis/redis-stack-server:latest
@@ -351,6 +419,12 @@ services:
       - "16386:16379"
     networks:
       - webrtc-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
   redis-sfu-3:
     image: redis/redis-stack-server:latest
@@ -362,6 +436,12 @@ services:
       - "16387:16379"
     networks:
       - webrtc-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
   redis-sfu-4:
     image: redis/redis-stack-server:latest
@@ -373,6 +453,12 @@ services:
       - "16388:16379"
     networks:
       - webrtc-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
   redis-sfu-5:
     image: redis/redis-stack-server:latest
@@ -384,6 +470,12 @@ services:
       - "16389:16379"
     networks:
       - webrtc-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
   redis-sfu-6:
     image: redis/redis-stack-server:latest
@@ -395,6 +487,12 @@ services:
       - "16390:16379"
     networks:
       - webrtc-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
   # Redis SFU Cluster Setup Service
   redis-sfu-cluster-setup:
@@ -405,29 +503,51 @@ services:
     networks:
       - webrtc-net
     depends_on:
-      - redis-sfu-1
-      - redis-sfu-2
-      - redis-sfu-3
-      - redis-sfu-4
-      - redis-sfu-5
-      - redis-sfu-6
+      redis-sfu-1:
+        condition: service_healthy
+      redis-sfu-2:
+        condition: service_healthy
+      redis-sfu-3:
+        condition: service_healthy
+      redis-sfu-4:
+        condition: service_healthy
+      redis-sfu-5:
+        condition: service_healthy
+      redis-sfu-6:
+        condition: service_healthy
 
   ion-sfu-1:
     build:
-      context: ./server/ion-sfu
+      context: ./server/ion_sfu_backup
       dockerfile: DockerFile
     environment:
       SFU_ID: sfu-alpha 
       REDIS_CLUSTER_NODES: redis-sfu-1:6379,redis-sfu-2:6379,redis-sfu-3:6379,redis-sfu-4:6379,redis-sfu-5:6379,redis-sfu-6:6379
+      PUBLIC_IP: 127.0.0.1
     networks:
       - webrtc-net
       - kafka-cluster
+    ports:
+      # Signaling port
+      - "8090:8080"
+      # WebRTC media ports (UDP is preferred, but TCP is a fallback)
+      - "10000-10100:10000-10100/udp"
+      - "10000-10100:10000-10100/tcp"
+      # Standard STUN/TURN ports
+      - "3478:3478/udp"
+      - "3478:3478/tcp"
+    
     depends_on:
-      - redis-sfu-cluster-setup
-      - kafka1
-      - kafka2
-      - kafka3
-      - zookeeper
+      redis-sfu-cluster-setup:
+        condition: service_completed_successfully
+      kafka1:
+        condition: service_started
+      kafka2:
+        condition: service_started
+      kafka3:
+        condition: service_started
+      zookeeper:
+        condition: service_started
 
 networks:
   #webrtc-net is the name of the network

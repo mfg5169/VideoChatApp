@@ -9,3 +9,9 @@ videochat-darwin-x64/
 
 todo.txt
 
+*.md
+!README.md
+!readme.md
+!Readme.md
+
+

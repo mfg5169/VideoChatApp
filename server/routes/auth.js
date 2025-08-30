@@ -204,7 +204,7 @@ router.post('/signup', upload.single('profilePicture'), async (req, res) => {
         // Generate JWT token
 
         const token = jwt.sign(
-            { userId: newUser.id, email: newUser.email },
+            { userId: String(newUser.id), email: newUser.email },
             JWT_SECRET,
             { expiresIn: '24h' }
         );
@@ -277,13 +277,13 @@ router.post('/login', async (req, res) => {
 
         // Generate JWT token
         const accessToken = jwt.sign(
-            { userId: user.id, email: user.email },
+            { userId: String(user.id), email: user.email },
             JWT_SECRET,
             { expiresIn: '24h' }
         );
 
         const refreshToken = jwt.sign(
-            { userId: user.id, email: user.email },
+            { userId: String(user.id), email: user.email },
             JWT_SECRET,
             { expiresIn: '7d' }
         );
@@ -318,7 +318,7 @@ router.post('/login', async (req, res) => {
         return res.json({
             message: 'Login successful',
             user: {
-                id: user.id,
+                id: String(user.id),
                 username: user.username,
                 email: user.email,
                 avatar_url: user.avatar_url
@@ -400,14 +400,14 @@ router.post('/refresh-token', async (req, res) => {
 
         // Generate new access token
         const newAccessToken = jwt.sign(
-            { userId: user.id, email: user.email },
+            { userId: String(user.id), email: user.email },
             JWT_SECRET,
             { expiresIn: '24h' }
         );
 
         // Generate new refresh token
         const newRefreshToken = jwt.sign(
-            { userId: user.id, email: user.email },
+            { userId: String(user.id), email: user.email },
             JWT_SECRET,
             { expiresIn: '7d' }
         );

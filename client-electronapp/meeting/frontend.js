@@ -27,6 +27,13 @@ const remoteVideoElements = new Map(); // Map<peerId, videoElement>
 
 clientIdDisplay.textContent = clientId;
 
+// Set meeting ID from URL parameters
+const urlParams = new URLSearchParams(window.location.search);
+const meetingIdFromUrl = urlParams.get('meetingId') || urlParams.get('meetingID');
+if (meetingIdFromUrl) {
+    document.getElementById('meetingId').textContent = `ID: ${meetingIdFromUrl}`;
+}
+
 // --- Utility Functions ---
 function generateUniqueId() {
     return 'client-' + Math.random().toString(36).substring(2, 9);
@@ -117,7 +124,9 @@ function createPeerConnection() {
         console.log('Received remote track:', event.track);
         const remoteStream = event.streams[0];
         if (remoteStream) {
-            const remotePeerId = event.track.id;
+            // Use a more reliable way to identify remote peers
+            // The SFU should send participant information
+            const remotePeerId = event.track.id || `peer-${Date.now()}`;
             addRemoteVideo(remotePeerId, remoteStream);
         }
     };
@@ -152,6 +161,17 @@ async function handleSignalingMessage(message) {
     if (message.type === 'answer') {
         console.log('Received answer from SFU.');
         await peerConnection.setRemoteDescription(new RTCSessionDescription(message.payload));
+    } else if (message.type === 'offer') {
+        console.log('Received renegotiation offer from SFU.');
+        try {
+            await peerConnection.setRemoteDescription(new RTCSessionDescription(message.payload));
+            const answer = await peerConnection.createAnswer();
+            await peerConnection.setLocalDescription(answer);
+            sendMessage('answer', { sdp: answer.sdp, type: 'answer' });
+            console.log('Sent renegotiation answer to SFU.');
+        } catch (error) {
+            console.error('Error handling renegotiation offer:', error);
+        }
     } else if (message.type === 'candidate') {
         console.log('Received ICE candidate from SFU.');
         try {
@@ -164,8 +184,12 @@ async function handleSignalingMessage(message) {
         }
     } else if (message.type === 'meetingEvent') {
         console.log('Received meeting event:', message.payload);
-        if (message.payload.type === 'clientLeft') {
-            console.warn(`Client ${message.payload.payload.clientId} left. Remote video cleanup needs more robust ID mapping.`);
+        if (message.payload.type === 'clientJoined') {
+            console.log(`Client ${message.payload.payload.clientId} joined the meeting.`);
+        } else if (message.payload.type === 'clientLeft') {
+            console.log(`Client ${message.payload.payload.clientId} left the meeting.`);
+            // Remove the video for this client
+            removeRemoteVideo(message.payload.payload.clientId);
         }
     } else if (message.type === 'error') {
         console.error('Signaling error from server:', message.payload.message);
@@ -195,7 +219,7 @@ function cleanupWebRTC() {
 joinButton.onclick = async () => {
     const urlParams = new URLSearchParams(window.location.search);
 
-    const meetingId = urlParams.get('meetingId');
+    const meetingId = urlParams.get('meetingId') || urlParams.get('meetingID');
     if (!meetingId) {
         alert('Please enter a Meeting ID.');
         console.error('No meeting ID found in URL.');
@@ -221,7 +245,10 @@ joinButton.onclick = async () => {
     assignedSignalingServerUrl = sessionStorage.getItem('assignedSignalingServerUrl');
     assignedSfuId = sessionStorage.getItem('assignedSfuId');
 
-    assignedSignalingServerUrl = signalingServerUrl;
+    // Use the assigned signaling server URL, fallback to default if not set
+    if (!assignedSignalingServerUrl) {
+        assignedSignalingServerUrl = signalingServerUrl;
+    }
 
 
     signalingServerDisplay.textContent = assignedSignalingServerUrl;

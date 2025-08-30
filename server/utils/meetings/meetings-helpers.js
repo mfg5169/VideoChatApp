@@ -116,7 +116,7 @@ async function findBestSfu(availableSfuIds) {
             }
         } else {
             console.warn(`\t\tFindBestSfu(Function Call): SFU ${sfuId} is not stale. Skipping...`);
-            await sfuRedis.srem('available_sfu_ids', sfuId);
+            await sfuRedis.srem('available_sfus', sfuId);
             await sfuRedis.del(`sfu:${sfuId}:metrics`);
         }
     }

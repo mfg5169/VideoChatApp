@@ -111,7 +111,7 @@ const AppState = {
   userId: null,
   userName: null,
   signalingUrl: null,
-  connectionState: 'disconnected',
+  WSconnectionState: 'disconnected',
   peerConnectionState: 'new',
   localStreamState: 'not_initialized',
   remoteParticipants: new Map(),
@@ -128,7 +128,7 @@ const AppState = {
       userId: this.userId,
       userName: this.userName,
       signalingUrl: this.signalingUrl,
-      connectionState: this.connectionState,
+      WSconnectionState: this.WSconnectionState,
       peerConnectionState: this.peerConnectionState,
       localStreamState: this.localStreamState,
       remoteParticipantsCount: this.remoteParticipants.size,
@@ -579,6 +579,9 @@ async function handleSignalingMessage(message) {
         }
 
         if (message.type === 'answer') {
+
+            console.log('--------------------------------');
+            console.log('--------------------------------');
             Logger.info('SIGNALING', 'Received answer from SFU', {
               payload: message.payload,
               payloadType: typeof message.payload,
@@ -587,12 +590,14 @@ async function handleSignalingMessage(message) {
             });
             await peerConnection.setRemoteDescription(new RTCSessionDescription(message.payload));
             Logger.info('SIGNALING', 'Remote description set from answer');
-            
+            Logger.info('SIGNALING', 'About to process ICE candidates', { count: RemoteIceCandidates.length });
             // Process any buffered ICE candidates
             while (RemoteIceCandidates.length > 0) {
                 await peerConnection.addIceCandidate(new RTCIceCandidate(RemoteIceCandidates.shift()));
             }
             Logger.info('SIGNALING', 'Processed buffered ICE candidates', { count: RemoteIceCandidates.length });
+            console.log('--------------------------------');
+            console.log('--------------------------------');
         } else if (message.type === 'offer') {
             Logger.info('SIGNALING', 'Received renegotiation offer from SFU');
             await peerConnection.setRemoteDescription(new RTCSessionDescription(message.payload));
@@ -702,7 +707,7 @@ function InitializeSocketConnection() {
         readyState: ws.readyState
       });
       
-      AppState.updateState({ connectionState: 'connected' });
+      AppState.updateState({ WSconnectionState: 'connected' });
       
       // Register client with signaling server (this tells THIS signaling server who we are)
       sendMessage('register', { id: user.id, role: 'client' });
@@ -716,7 +721,8 @@ function InitializeSocketConnection() {
         signalingServer: signalingUrl,
         meetingId: meetingID,
         userId: user.id,
-        peerConnectionState: peerConnection ? peerConnection.connectionState : 'not created'
+        peerConnectionState: peerConnection ? peerConnection.connectionState : 'not created',
+        WSconnectionState: AppState.WSconnectionState
       };
       
       Logger.info('WEBSOCKET', 'Connection status', connectionStatus);
@@ -745,13 +751,13 @@ function InitializeSocketConnection() {
         wasClean: event.wasClean
       });
       
-      AppState.updateState({ connectionState: 'disconnected' });
+      AppState.updateState({ WSconnectionState: 'disconnected' });
       cleanupWebRTC();
     }
     
     ws.onerror = (error) => {
       Logger.error('WEBSOCKET', 'WebSocket error occurred', error);
-      AppState.updateState({ connectionState: 'error' });
+      AppState.updateState({ WSconnectionState: 'error' });
     }
     
     Logger.info('WEBSOCKET', 'WebSocket event handlers configured');
@@ -912,7 +918,7 @@ function cleanupWebRTC() {
     AppState.updateState({ 
       localStreamState: 'cleaned',
       peerConnectionState: 'closed',
-      connectionState: 'disconnected'
+      WSconnectionState: 'disconnected'
     });
     
   } catch (error) {
