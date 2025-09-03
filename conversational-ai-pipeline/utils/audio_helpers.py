@@ -7,8 +7,6 @@ class VoiceActivityDetection:
         pass
 
 
-#https://github.com/xiph/rnnoise
-## Noise S
 class NoiseReduction:
     def __init__(self):
         pass

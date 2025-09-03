@@ -18,7 +18,6 @@ class VisualInterface:
         self.recording_manager = recording_manager
         self.recording = True
         
-        # Display configuration
         self.preview_width = 320
         self.preview_height = 240
         self.screen_preview_width = 480
@@ -33,21 +32,17 @@ class VisualInterface:
         self.root.geometry("1200x800")
         self.root.configure(bg='#2b2b2b')
         
-        # Create main frame
         main_frame = ttk.Frame(self.root)
         main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         
-        # Create interface sections
         self.create_title_section(main_frame)
         self.create_video_section(main_frame)
         self.create_audio_section(main_frame)
         self.create_controls_section(main_frame)
         self.create_status_section(main_frame)
         
-        # Setup audio visualization
         self.setup_audio_visualization()
         
-        # Start update loop
         self.update_displays()
         
     def create_title_section(self, parent):
@@ -61,7 +56,6 @@ class VisualInterface:
         video_frame = ttk.LabelFrame(parent, text="Video Streams", padding=10)
         video_frame.pack(fill=tk.X, pady=(0, 10))
         
-        # Camera preview
         camera_frame = ttk.Frame(video_frame)
         camera_frame.pack(side=tk.LEFT, padx=(0, 10))
         
@@ -69,7 +63,6 @@ class VisualInterface:
         self.camera_label = ttk.Label(camera_frame, text="Initializing...")
         self.camera_label.pack()
         
-        # Screen preview
         screen_frame = ttk.Frame(video_frame)
         screen_frame.pack(side=tk.LEFT)
         
@@ -82,15 +75,12 @@ class VisualInterface:
         audio_frame = ttk.LabelFrame(parent, text="Audio Visualization", padding=10)
         audio_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
         
-        # Create a simple text-based audio visualization
         self.audio_text = tk.Text(audio_frame, height=5, width=60, bg='black', fg='green', font=('Courier', 10))
         self.audio_text.pack(fill=tk.BOTH, expand=True)
         
-        # Audio level label
         self.audio_level_label = ttk.Label(audio_frame, text="Audio Level: 0", font=('Arial', 12))
         self.audio_level_label.pack(pady=(5, 0))
         
-        # Speech detection label
         self.speech_label = ttk.Label(audio_frame, text="Speech: 🔴 No Speech", font=('Arial', 12, 'bold'))
         self.speech_label.pack(pady=(5, 0))
         
@@ -99,12 +89,10 @@ class VisualInterface:
         controls_frame = ttk.Frame(parent)
         controls_frame.pack(fill=tk.X, pady=(0, 10))
         
-        # Recording button
         self.record_button = ttk.Button(controls_frame, text="Stop Recording", 
                                        command=self.stop_recording)
         self.record_button.pack(side=tk.LEFT, padx=(0, 10))
         
-        # Status text
         self.status_text = tk.Text(controls_frame, height=3, width=60)
         self.status_text.pack(side=tk.LEFT, fill=tk.X, expand=True)
         self.status_text.insert(tk.END, "Recording started...\n")
@@ -114,19 +102,15 @@ class VisualInterface:
         status_frame = ttk.LabelFrame(parent, text="Status", padding=10)
         status_frame.pack(fill=tk.X)
         
-        # Status indicators
         indicators_frame = ttk.Frame(status_frame)
         indicators_frame.pack()
         
-        # Audio status
         self.audio_status = ttk.Label(indicators_frame, text="🔴 Audio: Stopped")
         self.audio_status.pack(side=tk.LEFT, padx=(0, 20))
         
-        # Camera status
         self.camera_status = ttk.Label(indicators_frame, text="🔴 Camera: Stopped")
         self.camera_status.pack(side=tk.LEFT, padx=(0, 20))
         
-        # Screen status
         self.screen_status = ttk.Label(indicators_frame, text="🔴 Screen: Stopped")
         self.screen_status.pack(side=tk.LEFT)
         
@@ -137,25 +121,19 @@ class VisualInterface:
     def update_audio_visualization(self, audio_data):
         """Update audio visualization"""
         try:
-            # Convert bytes to numpy array
             audio_array = np.frombuffer(audio_data, dtype=np.int16)
 
-            # Initialize VAD once (reuse instance for better performance)
             if not hasattr(self, 'vad'):
                 self.vad = VAD(aggressiveness=2)  # Medium aggressiveness
             
-            # Check for speech
             speech_detected = self.vad.is_speech(audio_data)
             
-            # Update speech status
             speech_status = "🟢 SPEECH DETECTED" if speech_detected else "🔴 No Speech"
             print(f"Speech Detection: {speech_status}")
             
-            # Update speech label in the interface
             self.speech_label.config(text=f"Speech: {speech_status}")
             
             if len(audio_array) > 0:
-                # Calculate audio level
                 rms = np.sqrt(np.mean(audio_array**2))
                 if np.isnan(rms):
                     rms = 0
@@ -163,19 +141,15 @@ class VisualInterface:
                 if np.isnan(peak):
                     peak = 0
                 
-                # Update audio level label
                 self.audio_level_label.config(text=f"Audio Level: {rms:.0f} RMS | {peak:.0f} Peak")
                 
-                # Create a simple bar visualization
                 level = int(rms / 100) if rms > 0 else 0
                 bar = "█" * min(level, 50)  # Max 50 characters
                 
-                # Add to history (keep last 10 entries)
                 self.audio_history.append(bar)
                 if len(self.audio_history) > 10:
                     self.audio_history.pop(0)
                 
-                # Update text display
                 self.audio_text.delete(1.0, tk.END)
                 for i, hist_bar in enumerate(reversed(self.audio_history)):
                     self.audio_text.insert(tk.END, f"Frame {len(self.audio_history)-i:2d}: {hist_bar}\n")
@@ -188,11 +162,9 @@ class VisualInterface:
         if not self.recording:
             return
             
-        # Update camera preview
         try:
             camera_queue = self.recording_manager.get_camera_queue()
             if not camera_queue.empty():
-                # Get the most recent frame only
                 frame = None
                 while not camera_queue.empty():
                     try:
@@ -201,13 +173,10 @@ class VisualInterface:
                         break
                 
                 if frame is not None:
-                    # Resize for preview
                     preview_frame = cv2.resize(frame, (self.preview_width, self.preview_height))
                     
-                    # Convert BGR to RGB for tkinter display (OpenCV uses BGR, tkinter expects RGB)
                     preview_frame_rgb = cv2.cvtColor(preview_frame, cv2.COLOR_BGR2RGB)
                     
-                    # Convert to PIL Image for better color handling
                     pil_image = Image.fromarray(preview_frame_rgb)
                     img = ImageTk.PhotoImage(pil_image)
                     self.camera_label.configure(image=img, text="")
@@ -216,17 +185,14 @@ class VisualInterface:
         except Exception as e:
             self.camera_status.configure(text="🔴 Camera: Error")
             
-        # Update screen preview
         try:
             screen_queue = self.recording_manager.get_screen_queue()
             if not screen_queue.empty():
                 frame = screen_queue.get_nowait()
                 if frame is not None:
-                    # Resize for preview
                     preview_frame = cv2.resize(frame, (self.screen_preview_width, self.screen_preview_height))
                     preview_frame = cv2.cvtColor(preview_frame, cv2.COLOR_BGR2RGB)
                     
-                    # Convert to PIL Image for better color handling
                     pil_image = Image.fromarray(preview_frame)
                     img = ImageTk.PhotoImage(pil_image)
                     self.screen_label.configure(image=img, text="")
@@ -235,21 +201,17 @@ class VisualInterface:
         except Exception as e:
             self.screen_status.configure(text="🔴 Screen: Error")
             
-        # Update audio visualization
         try:
             audio_queue = self.recording_manager.get_audio_queue()
             if not audio_queue.empty():
                 audio_data = audio_queue.get_nowait()
                 if audio_data is not None:
-                    # Debug: print audio data length
-                    # print(f"Audio data length: {len(audio_data)} bytes")
                     self.update_audio_visualization(audio_data)
                     self.audio_status.configure(text="🟢 Audio: Recording")
         except Exception as e:
             print(f"Audio update error: {e}")
             self.audio_status.configure(text="🔴 Audio: Error")
             
-        # Schedule next update - faster updates for lower latency
         self.root.after(16, self.update_displays)  # Update every ~16ms (60 FPS)
         
     def stop_recording(self):
@@ -265,22 +227,16 @@ class VisualInterface:
 
 def main():
     """Main function"""
-    # Create output directory
     output_dir = f"recordings/{datetime.now().strftime('%Y%m%d_%H%M%S')}"
     
-    # Create recording manager
     recording_manager = RecordingManager(output_dir)
     
-    # Create visual interface
     interface = VisualInterface(recording_manager)
     
-    # Start recording
     recording_manager.start_recording()
     
-    # Run the visual interface
     interface.run()
     
-    # Clean up
     recording_manager.stop_recording()
     recording_manager.save_recordings()
     recording_manager.cleanup()

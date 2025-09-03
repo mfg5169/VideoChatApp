@@ -35,7 +35,6 @@ async function startCapture() {
 async function setupAudioProcessing(stream) {
     const audioContext = new AudioContext({ sampleRate: 16000 });
     
-    // This is the line that will load your separate file.
     try {
         await audioContext.audioWorklet.addModule('audio-processor.js');
     } catch (e) {
