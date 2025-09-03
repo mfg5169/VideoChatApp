@@ -874,7 +874,7 @@ func sendSFUSignalToClient(clientID string, signalType string, sdp string, candi
 
 	// Send to Kafka topic that the signaling server listens to
 	msg := &sarama.ProducerMessage{
-		Topic: "sfu_commands",
+		Topic: replyTo,
 		Key:   sarama.StringEncoder(clientID),
 		Value: sarama.StringEncoder(string(msgJSON)),
 	}

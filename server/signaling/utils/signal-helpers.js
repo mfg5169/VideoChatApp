@@ -544,11 +544,14 @@ async function WebRTCHandler(payload, senderId, type, meetingId) {
         });
 
         if (assignedSfuId) {
+
+            const sdp = payload.sdp;
             Logger.info('WEBRTC', 'Relaying WebRTC signal to SFU', {
               type,
               senderId,
               meetingId,
-              assignedSfuId
+              assignedSfuId,
+              sdp,
             });
             
             // Relay message to the assigned SFU via Kafka
@@ -556,6 +559,7 @@ async function WebRTCHandler(payload, senderId, type, meetingId) {
                 key: assignedSfuId, 
                 value: JSON.stringify({
                      type: 'webrtcSignal', 
+                     replyTo: `sfu-responses-${process.env.SIGNALING_SERVER_ID}`, // Add the reply-to topic
                      payload: { type: type,
                                 sdp: payload.sdp, 
                                 candidate: payload.candidate, 
@@ -624,41 +628,31 @@ function SfuSignalToClient(payload, clients) {
             let messagePayload;
             
             if (signalType === 'answer') {
-                // For answers, send the SDP directly as expected by RTCSessionDescription
+                // The payload must be an object with type and sdp
                 messagePayload = {
-                    type: signalType,
+                    type: 'answer',
                     payload: {
                         type: 'answer',
                         sdp: sdp
                     }
                 };
             } else if (signalType === 'offer') {
-                // For offers, send the SDP directly
+                // The payload must be an object with type and sdp
                 messagePayload = {
-                    type: signalType,
+                    type: 'offer',
                     payload: {
                         type: 'offer',
                         sdp: sdp
                     }
                 };
             } else if (signalType === 'candidate') {
-                // For candidates, send the candidate object with required fields
-                Logger.info('SFU', 'Processing candidate signal', {
-                    candidate: candidate,
-                    candidateType: typeof candidate,
-                    candidateKeys: candidate ? Object.keys(candidate) : 'null'
-                });
-                
+                // For candidates, the payload is the candidate object itself
                 messagePayload = {
-                    type: signalType,
-                    payload: {
-                        candidate: candidate.candidate,
-                        sdpMid: candidate.sdpMid || '0',
-                        sdpMLineIndex: candidate.sdpMLineIndex || 0
-                    }
+                    type: 'candidate',
+                    payload: candidate
                 };
             } else {
-                // For other signal types, use the original format
+                // Fallback for other signal types
                 messagePayload = {
                     type: signalType,
                     payload: {

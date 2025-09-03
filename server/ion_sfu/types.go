@@ -41,6 +41,7 @@ type SFUSignalToClientPayload struct {
 	SDP            string      `json:"sdp,omitempty"`
 	Candidate      interface{} `json:"candidate,omitempty"`
 	MeetingID      string      `json:"meetingId"`
+	ReplyTo        string      `json:"replyTo"`
 }
 
 type SFUMeetingEventPayload struct {
@@ -52,6 +53,7 @@ type SFUMeetingEventPayload struct {
 // Command structure for Redis messages from signaling server
 type SFUCommand struct {
 	Type    string                 `json:"type"`
+	ReplyTo string                 `json:"replyTo,omitempty"` // The Kafka topic to send responses to
 	Payload map[string]interface{} `json:"payload"`
 }
 

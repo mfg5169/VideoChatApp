@@ -158,6 +158,10 @@ class WebRTCManager {
 
   async handleSignalingMessage(message) {
     if (window.Logger) {
+      // Enhanced logging to see the raw incoming message
+      window.Logger.info('WEBRTC_INCOMING', 'Received full signaling message object from server', {
+        fullMessage: message
+      });
       window.Logger.debug('WEBRTC', 'Processing WebRTC signaling message', {
         type: message.type,
         hasPayload: !!message.payload
@@ -176,11 +180,17 @@ class WebRTCManager {
 
       if (message.type === 'answer') {
         if (window.Logger) {
-          window.Logger.info('WEBRTC', 'Received answer from SFU');
+          window.Logger.info('WEBRTC_INCOMING', 'Processing ANSWER from SFU', { payload: message.payload });
         }
-        await this.peerConnection.setRemoteDescription(new RTCSessionDescription(message.payload));
-        if (window.Logger) {
-          window.Logger.info('WEBRTC', 'Remote description set from answer');
+        try {
+          await this.peerConnection.setRemoteDescription(new RTCSessionDescription(message.payload));
+          if (window.Logger) {
+            window.Logger.info('WEBRTC', 'Remote description set from answer');
+          }
+        } catch (error) {
+          if (window.Logger) {
+            window.Logger.error('WEBRTC', 'Error setting remote description for ANSWER', error, { payload: message.payload });
+          }
         }
         
         // Process buffered ICE candidates
@@ -205,7 +215,7 @@ class WebRTCManager {
         
       } else if (message.type === 'candidate') {
         if (window.Logger) {
-          window.Logger.debug('WEBRTC', 'Received ICE candidate from SFU');
+          window.Logger.info('WEBRTC_INCOMING', 'Processing CANDIDATE from SFU', { payload: message.payload });
         }
         await this.addIceCandidate(message.payload);
       }
@@ -223,6 +233,9 @@ class WebRTCManager {
   async addIceCandidate(candidate) {
     try {
       if (this.peerConnection && this.peerConnection.remoteDescription) {
+        if (window.Logger) {
+          window.Logger.debug('WEBRTC', 'Attempting to add ICE candidate now', { candidate });
+        }
         await this.peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
         if (window.Logger) {
           window.Logger.debug('WEBRTC', 'ICE candidate added to PeerConnection');

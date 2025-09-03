@@ -518,7 +518,7 @@ services:
 
   ion-sfu-1:
     build:
-      context: ./server/ion_sfu_backup
+      context: ./server/ion_sfu
       dockerfile: DockerFile
     environment:
       SFU_ID: sfu-alpha 
@@ -528,7 +528,6 @@ services:
       - webrtc-net
       - kafka-cluster
     ports:
-      # Signaling port
       - "8090:8080"
       # WebRTC media ports (UDP is preferred, but TCP is a fallback)
       - "10000-10100:10000-10100/udp"

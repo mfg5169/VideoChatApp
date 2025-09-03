@@ -80,10 +80,10 @@ func sendHeartbeats() {
 
 	for range ticker.C {
 		heartbeatCount++
-		sfuLogger.Debug("HEARTBEAT", "Sending heartbeat", map[string]interface{}{
-			"heartbeatCount": heartbeatCount,
-			"sfuID":          sfuID,
-		})
+		// sfuLogger.Debug("HEARTBEAT", "Sending heartbeat", map[string]interface{}{
+		// 	"heartbeatCount": heartbeatCount,
+		// 	"sfuID":          sfuID,
+		// })
 
 		metricsMu.Lock()
 		sfuMetrics.LastHeartbeat = time.Now().UnixMilli()
@@ -123,11 +123,11 @@ func sendHeartbeats() {
 		}
 
 		sfuState.UpdateHeartbeat()
-		sfuLogger.Debug("HEARTBEAT", "Heartbeat sent successfully", map[string]interface{}{
-			"sfuID":            sfuID,
-			"heartbeatCount":   heartbeatCount,
-			"connectedClients": currentMetrics.ConnectedClients,
-			"activeMeetings":   currentMetrics.ActiveMeetings,
-		})
+		// sfuLogger.Debug("HEARTBEAT", "Heartbeat sent successfully", map[string]interface{}{
+		// 	"sfuID":            sfuID,
+		// 	"heartbeatCount":   heartbeatCount,
+		// 	"connectedClients": currentMetrics.ConnectedClients,
+		// 	"activeMeetings":   currentMetrics.ActiveMeetings,
+		// })
 	}
 }

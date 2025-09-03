@@ -191,6 +191,9 @@ async function initKafka() {
       try {
         Logger.debug('KAFKA', `Attempting to subscribe to topics (attempt ${subscriptionRetries + 1}/${maxRetries})`);
         
+        const responseTopic = `sfu-responses-${process.env.SIGNALING_SERVER_ID}`;
+        Logger.info('KAFKA', 'Subscribing to unique response topic', { responseTopic });
+
         // Subscribe to topics with error handling
         await consumer.subscribe({ topic: 'meeting-events', fromBeginning: false });
         Logger.info('KAFKA', 'Successfully subscribed to meeting-events topic');
@@ -198,8 +201,11 @@ async function initKafka() {
         await consumer.subscribe({ topic: 'sfu_commands', fromBeginning: false });
         Logger.info('KAFKA', 'Successfully subscribed to sfu_commands topic');
         
+        await consumer.subscribe({ topic: responseTopic, fromBeginning: false });
+        Logger.info('KAFKA', 'Successfully subscribed to SFU response topic', { topic: responseTopic });
+
         Logger.info('KAFKA', 'Consumer subscribed to all topics successfully', {
-          topics: ['meeting-events', 'sfu_commands']
+          topics: ['meeting-events', 'sfu_commands', responseTopic]
         });
         break; // Success, exit retry loop
         
@@ -242,7 +248,7 @@ async function initKafka() {
               userId: event.userId,
               messageSize: message.value.length
             });
-          } else if (topic === 'sfu_commands') {
+          } else if (topic === 'sfu_commands' || topic.startsWith('sfu-responses-')) {
             const sfuCommand = JSON.parse(message.value.toString());
             Logger.info('KAFKA', 'Received SFU command', {
               commandType: sfuCommand.type || sfuCommand.event,
@@ -267,16 +273,8 @@ async function initKafka() {
               meetingId
             });
             
-            // Normalize the command format
-            const normalizedCommand = {
-              type: commandType,
-              payload: {
-                ...sfuCommand.payload,
-                meetingId: meetingId
-              }
-            };
-            
-            handleSFUCommand(normalizedCommand);
+            // Pass the original command directly without re-wrapping the payload
+            handleSFUCommand(sfuCommand);
           }
         } catch (parseError) {
           KafkaState.updateStats('error');

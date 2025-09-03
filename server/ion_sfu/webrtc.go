@@ -4,7 +4,7 @@ import (
 	"github.com/pion/webrtc/v3"
 )
 
-func setupClientPeerConnection(meeting *Meeting, clientID string) {
+func setupClientPeerConnection(meeting *Meeting, clientID string, replyTo string) {
 	sfuLogger.Info("WEBRTC", "Setting up client peer connection", map[string]interface{}{
 		"clientID":  clientID,
 		"meetingID": meeting.ID,
@@ -66,7 +66,7 @@ func setupClientPeerConnection(meeting *Meeting, clientID string) {
 			"meetingID": meeting.ID,
 			"candidate": c.String(),
 		})
-		sendSFUSignalToClient(clientID, "candidate", "", c, meeting.ID)
+		sendSFUSignalToClient(clientID, "candidate", "", c, meeting.ID, replyTo)
 	})
 
 	peerConnection.OnConnectionStateChange(func(s webrtc.PeerConnectionState) {
@@ -150,7 +150,7 @@ func setupClientPeerConnection(meeting *Meeting, clientID string) {
 		meeting.mu.RLock()
 		for _, existingClientPeer := range meeting.clients {
 			if existingClientPeer.ID != clientID { // Don't send back to sender
-				addTrackToPeer(existingClientPeer.PeerConnection, trackLocal)
+				addTrackToPeer(existingClientPeer.PeerConnection, trackLocal, replyTo)
 			}
 		}
 		meeting.mu.RUnlock()
@@ -212,7 +212,7 @@ func setupClientPeerConnection(meeting *Meeting, clientID string) {
 
 	meeting.mu.RLock()
 	for _, trackLocal := range meeting.trackLocals {
-		addTrackToPeer(peerConnection, trackLocal)
+		addTrackToPeer(peerConnection, trackLocal, replyTo)
 	}
 	meeting.mu.RUnlock()
 
@@ -224,7 +224,7 @@ func setupClientPeerConnection(meeting *Meeting, clientID string) {
 	})
 }
 
-func addTrackToPeer(pc *webrtc.PeerConnection, trackLocal *webrtc.TrackLocalStaticRTP) {
+func addTrackToPeer(pc *webrtc.PeerConnection, trackLocal *webrtc.TrackLocalStaticRTP, replyTo string) {
 	sfuLogger.Debug("WEBRTC", "Adding track to peer connection", map[string]interface{}{
 		"trackID":   trackLocal.ID(),
 		"trackKind": trackLocal.Kind().String(),
@@ -284,7 +284,10 @@ func addTrackToPeer(pc *webrtc.PeerConnection, trackLocal *webrtc.TrackLocalStat
 		meeting.mu.RLock()
 		for clientID, clientPeer := range meeting.clients {
 			if clientPeer.PeerConnection == pc {
-				sendSFUSignalToClient(clientID, "offer", offer.SDP, nil, meeting.ID)
+				// We don't have the replyTo topic here. This is a renegotiation initiated by the SFU.
+				// The response should go to the main topic, and the signaling server will need to handle it.
+				// In the future, we could store the replyTo topic in the ClientPeer struct.
+				sendSFUSignalToClient(clientID, "offer", offer.SDP, nil, meeting.ID, replyTo)
 				meeting.mu.RUnlock()
 				meetingsMu.RUnlock()
 

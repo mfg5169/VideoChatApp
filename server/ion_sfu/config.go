@@ -36,7 +36,7 @@ func initConfig() {
 
 	C = Config{
 		SFUID:               getEnv("SFU_ID", SFUIDPrefix+generateRandomID()),
-		LogLevel:            getLogLevelEnv("SFU_LOG_LEVEL", INFO),
+		LogLevel:            getLogLevelEnv("SFU_LOG_LEVEL", DEBUG),
 		SignalingURL:        getEnv("SIGNALING_SERVER_URL", "ws://localhost:8080"),
 		RedisClusterNodes:   getEnvSlice("REDIS_CLUSTER_NODES", "localhost:7000,localhost:7001,localhost:7002"),
 		KafkaBrokers:        getEnvSlice("KAFKA_BROKERS", "kafka1:9092,kafka2:9093,kafka3:9094"),

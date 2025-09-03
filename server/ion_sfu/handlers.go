@@ -39,6 +39,10 @@ func processKafkaMessage(msg *sarama.ConsumerMessage, messageCount int64) {
 		// The key is the clientID. The signaling server should handle this.
 		// We are consuming from the same topic, so we might get our own messages.
 		// We should ignore them.
+		sfuLogger.Warn("KAFKA", "sfuSignalToClient when shouldn't have", map[string]interface{}{
+			"commandType": sfuCommand.Type,
+			"payload":     sfuCommand.Payload,
+		})
 		return
 	}
 
@@ -183,7 +187,7 @@ func handleClientJoined(sfuCommand SFUCommand, meeting *Meeting) {
 		"meetingID": meetingID,
 		"sfuID":     sfuID,
 	})
-	go setupClientPeerConnection(meeting, clientID)
+	go setupClientPeerConnection(meeting, clientID, sfuCommand.ReplyTo)
 	metricsMu.Lock()
 	sfuMetrics.ConnectedClients++
 	if len(meeting.clients) == 0 { // First client in this meeting on this SFU
@@ -389,7 +393,7 @@ func handleOfferSignal(sfuCommand SFUCommand, peer *ClientPeer, senderID, meetin
 	}
 
 	// Send answer back to client
-	sendSFUSignalToClient(senderID, "answer", answer.SDP, nil, meetingID)
+	sendSFUSignalToClient(senderID, "answer", answer.SDP, nil, meetingID, sfuCommand.ReplyTo)
 	sfuLogger.Info("KAFKA", "Sent answer to client", map[string]interface{}{
 		"senderID":        senderID,
 		"meetingID":       meetingID,
@@ -446,8 +450,8 @@ func handleCandidateSignal(sfuCommand SFUCommand, peer *ClientPeer, senderID, me
 	}
 
 	candidateJSON, _ := json.Marshal(candidateMap)
-	var iceCandidate webrtc.ICECandidate
-	if err := json.Unmarshal(candidateJSON, &iceCandidate); err != nil {
+	var iceCandidateInit webrtc.ICECandidateInit
+	if err := json.Unmarshal(candidateJSON, &iceCandidateInit); err != nil {
 		sfuLogger.Error("KAFKA", "Error unmarshalling ICE candidate", err, map[string]interface{}{
 			"senderID":     senderID,
 			"candidateMap": candidateMap,
@@ -459,27 +463,27 @@ func handleCandidateSignal(sfuCommand SFUCommand, peer *ClientPeer, senderID, me
 	sfuLogger.Debug("KAFKA", "Received ICE candidate from client", map[string]interface{}{
 		"senderID":  senderID,
 		"meetingID": meetingID,
-		"candidate": iceCandidate.String(),
+		"candidate": iceCandidateInit.Candidate,
 	})
 
 	// Check if remote description is set before adding ICE candidate
 	if peer.PeerConnection.RemoteDescription() == nil {
 		sfuLogger.Debug("KAFKA", "Remote description not set yet, buffering ICE candidate", map[string]interface{}{
 			"senderID":  senderID,
-			"candidate": iceCandidate.String(),
+			"candidate": iceCandidateInit.Candidate,
 		})
 		// Store the candidate to be added later when remote description is set
 		if peer.pendingCandidates == nil {
 			peer.pendingCandidates = make([]webrtc.ICECandidateInit, 0)
 		}
-		peer.pendingCandidates = append(peer.pendingCandidates, iceCandidate.ToJSON())
+		peer.pendingCandidates = append(peer.pendingCandidates, iceCandidateInit)
 		return
 	}
 
-	if err := peer.PeerConnection.AddICECandidate(iceCandidate.ToJSON()); err != nil {
+	if err := peer.PeerConnection.AddICECandidate(iceCandidateInit); err != nil {
 		sfuLogger.Error("KAFKA", "Error adding ICE candidate", err, map[string]interface{}{
 			"senderID":  senderID,
-			"candidate": iceCandidate.String(),
+			"candidate": iceCandidateInit.Candidate,
 		})
 		sfuState.IncrementCounters(0, 0, 1)
 		return
@@ -487,7 +491,7 @@ func handleCandidateSignal(sfuCommand SFUCommand, peer *ClientPeer, senderID, me
 
 	sfuLogger.Debug("KAFKA", "Successfully added ICE candidate", map[string]interface{}{
 		"senderID":  senderID,
-		"candidate": iceCandidate.String(),
+		"candidate": iceCandidateInit.Candidate,
 	})
 }
 
@@ -517,11 +521,12 @@ func processPendingCandidates(peer *ClientPeer, senderID string) {
 }
 
 // sendSFUSignalToClient sends signals from SFU to a specific client via Kafka
-func sendSFUSignalToClient(clientID string, signalType string, sdp string, candidate *webrtc.ICECandidate, meetingID string) {
+func sendSFUSignalToClient(clientID string, signalType string, sdp string, candidate *webrtc.ICECandidate, meetingID string, replyTo string) {
 	sfuLogger.Debug("KAFKA", "Sending SFU signal to client", map[string]interface{}{
 		"clientID":     clientID,
 		"signalType":   signalType,
 		"meetingID":    meetingID,
+		"replyTo":      replyTo,
 		"hasSDP":       len(sdp) > 0,
 		"hasCandidate": candidate != nil,
 	})
@@ -560,8 +565,13 @@ func sendSFUSignalToClient(clientID string, signalType string, sdp string, candi
 		return
 	}
 
+	topic := "sfu_commands"
+	if replyTo != "" {
+		topic = replyTo
+	}
+
 	msg := &sarama.ProducerMessage{
-		Topic: "sfu_commands",
+		Topic: topic,
 		Key:   sarama.StringEncoder(clientID),
 		Value: sarama.StringEncoder(string(msgJSON)),
 	}
@@ -572,7 +582,7 @@ func sendSFUSignalToClient(clientID string, signalType string, sdp string, candi
 			"clientID":   clientID,
 			"signalType": signalType,
 			"meetingID":  meetingID,
-			"topic":      "sfu_commands",
+			"topic":      topic,
 		})
 		sfuState.IncrementCounters(0, 0, 1)
 	} else {

@@ -74,7 +74,7 @@ func (l *Logger) formatMessage(level LogLevel, component, message string, data i
 	timestamp := time.Now().Format("2006-01-02T15:04:05.000Z07:00")
 
 	// Get caller information for better debugging
-	_, file, line, ok := runtime.Caller(2)
+	_, file, line, ok := runtime.Caller(3)
 	caller := "unknown"
 	if ok {
 		// Extract just the filename from the full path
@@ -88,7 +88,7 @@ func (l *Logger) formatMessage(level LogLevel, component, message string, data i
 	}
 
 	// Try to get function name as well
-	pc, _, _, ok := runtime.Caller(2)
+	pc, _, _, ok := runtime.Caller(3)
 	funcName := "unknown"
 	if ok {
 		if fn := runtime.FuncForPC(pc); fn != nil {
