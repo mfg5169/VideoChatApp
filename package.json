@@ -8,7 +8,7 @@
     "start": "npm run docker:up && npm run wait:redis && concurrently \"npm run server\" \"electron .\" ",
     "server": "node server/index.js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build:css": "tailwindcss -c tailwind.config.js -i ./src/input.css -o ./tailwind.css"
+    "build:css": "tailwindcss -c ./tailwind/tailwind.config.js -i ./tailwind/input.css -o ./tailwind/tailwind.css"
   },
   "keywords": [],
   "author": "",

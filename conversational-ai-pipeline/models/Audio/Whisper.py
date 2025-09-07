@@ -17,20 +17,15 @@ def transcribe_bytes(audio_bytes):
         str: Transcribed text
     """
     try:
-        # Convert audio bytes to numpy array
         audio_np = np.frombuffer(audio_bytes, dtype=np.int16).astype(np.float32) / 32768.0
         
-        # Pad or trim audio to fit 30 seconds
         audio_np = whisper.pad_or_trim(audio_np)
         
-        # Make log-Mel spectrogram and move to the same device as the model
         mel = whisper.log_mel_spectrogram(audio_np, n_mels=model.dims.n_mels).to(model.device)
         
-        # Detect the spoken language
         _, probs = model.detect_language(mel)
         detected_language = max(probs, key=probs.get)
         
-        # Decode the audio
         options = whisper.DecodingOptions()
         result = whisper.decode(model, mel, options)
         
@@ -52,19 +47,14 @@ def transcribe_audio_chunk(audio_bytes, sample_rate=16000):
         str: Transcribed text
     """
     try:
-        # Convert audio bytes to numpy array
         audio_np = np.frombuffer(audio_bytes, dtype=np.int16).astype(np.float32) / 32768.0
         
-        # For real-time processing, we might want to accumulate audio
-        # For now, just process the chunk directly
+
         if len(audio_np) > 0:
-            # Pad or trim audio to fit 30 seconds
             audio_np = whisper.pad_or_trim(audio_np)
             
-            # Make log-Mel spectrogram
             mel = whisper.log_mel_spectrogram(audio_np, n_mels=model.dims.n_mels).to(model.device)
             
-            # Decode the audio
             options = whisper.DecodingOptions()
             result = whisper.decode(model, mel, options)
             
@@ -113,16 +103,12 @@ def transcribe_buffer(buffer, sample_rate=16000):
         if not buffer:
             return ""
             
-        # Concatenate all audio chunks
         audio_np = np.concatenate(buffer)
         
-        # Pad or trim audio to fit 30 seconds
         audio_np = whisper.pad_or_trim(audio_np)
         
-        # Make log-Mel spectrogram
         mel = whisper.log_mel_spectrogram(audio_np, n_mels=model.dims.n_mels).to(model.device)
         
-        # Decode the audio
         options = whisper.DecodingOptions()
         result = whisper.decode(model, mel, options)
         

@@ -7,14 +7,11 @@ import tempfile
 import subprocess
 import platform
 
-# Create a client for Amazon Polly
 polly_client = boto3.client('polly')
 
-# Create output directory if it doesn't exist
 output_dir = "audio_output"
 if not os.path.exists(output_dir):
     os.makedirs(output_dir)
-
 
 def synthesize_speech(text, voice_id, engine="standard", output_format="mp3", text_type="text"):
     """
@@ -85,7 +82,6 @@ def play_audio(audio_data, format="mp3"):
             print(f"Unsupported operating system: {system}")
             return False
         
-        # Clean up temporary file
         os.unlink(temp_file_path)
         return True
         
@@ -118,16 +114,14 @@ def save_audio_file(audio_data, filename, output_dir="audio_output"):
         return None
 
 
-# Get the list of available voices
+
 response = polly_client.describe_voices()
 
-# Create dictionaries to store voices by engine type
 standard_voices = []
 neural_voices = []
 long_form_voices = []
 generative_voices = []
 
-# Categorize voices by supported engine
 for voice in response['Voices']:
     voice_info = {
         'Id': voice['Id'],
@@ -155,7 +149,6 @@ print(f"Available Long-form Voices: {len(long_form_voices)}")
 print(f"Available Generative Voices: {len(generative_voices)}")
 
 
-# Show the first 5 neural and generative voices as examples
 print("\nSample Neural Voices:")
 for voice in neural_voices[:5]:
     print(f"ID: {voice['Id']}, Language: {voice['LanguageCode']}, Gender: {voice['Gender']}")
@@ -164,10 +157,8 @@ print("\nSample Generative Voices:")
 for voice in generative_voices[:5]:
     print(f"ID: {voice['Id']}, Language: {voice['LanguageCode']}, Gender: {voice['Gender']}")
 
-# Sample text to synthesize
 sample_text = "I'm mad at you."
 
-# Example with US English female voice (Joanna)
 standard_audio_joanna = synthesize_speech(
     text=sample_text,
     voice_id="Joanna",
@@ -176,18 +167,14 @@ standard_audio_joanna = synthesize_speech(
     text_type="text"
 )
 
-# Save the audio
 save_audio_file(standard_audio_joanna, "standard_joanna.mp3")
 
-# Play the audio
 print("Playing audio...")
 play_audio(standard_audio_joanna)
 
 
-# Sample text to synthesize
 sample_text = "Hello, welcome to this demonstration of Amazon Polly. This is the generative engine, which produces the most natural-sounding speech."
 
-# Example with US English female voice (Joanna)
 generative_audio_joanna = synthesize_speech(
     text=sample_text,
     voice_id="Joanna",
@@ -196,11 +183,6 @@ generative_audio_joanna = synthesize_speech(
     text_type="text"
 )
 
-# Save the audio
-# save_audio_file(generative_audio_joanna, "generative_joanna.mp3")
-
-# Play the audio
-# Basic SSML with pauses
 ssml_text = """<speak>
     Hello! <break time='1s'/> Welcome to Amazon Polly. 
     This is a demonstration of SSML, which allows for <prosody rate='slow'>slower speech</prosody> 
@@ -214,5 +196,4 @@ ssml_audio = synthesize_speech(
     engine="neural",
     text_type="ssml"
 )
-# save_audio_file(ssml_audio, "ssml_demo.mp3")
 play_audio(ssml_audio)

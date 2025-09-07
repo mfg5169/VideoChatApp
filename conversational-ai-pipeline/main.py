@@ -9,7 +9,7 @@ from tkinter import ttk
 
 from PIL import Image, ImageTk
 from mediasources import RecordingManager
-from models.VAD import WebRtC as VAD
+from models.Audio.VAD import WebRtC as VAD
 
 class VisualInterface:
     """Handles the visual interface for the recording dashboard"""

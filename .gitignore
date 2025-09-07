@@ -7,11 +7,14 @@ build/
 
 videochat-darwin-x64/
 
-todo.txt
+toodo/
 
-*.md
-!README.md
-!readme.md
-!Readme.md
+
+docs/
+!docs/README.md
+!docs/readme.md
+!docs/Readme.md
+
+**/.md
 
 

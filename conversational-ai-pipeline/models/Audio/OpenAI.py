@@ -5,6 +5,7 @@ from openai.helpers import LocalAudioPlayer
 
 openai = AsyncOpenAI()
 
+## Text to Speech
 async def main() -> None:
     async with openai.audio.speech.with_streaming_response.create(
         model="gpt-4o-mini-tts",

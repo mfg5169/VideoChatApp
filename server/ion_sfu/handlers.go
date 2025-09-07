@@ -31,14 +31,8 @@ func processKafkaMessage(msg *sarama.ConsumerMessage, messageCount int64) {
 		return
 	}
 
-	// Check if this command is for this SFU. Some messages are broadcasts (like client signals)
-	// that the signaling server sends, and we need to route them appropriately.
-	// The key is often the target (SFU or client).
 	if sfuCommand.Type == "sfuSignalToClient" {
-		// This is a message produced by an SFU, intended for a client.
-		// The key is the clientID. The signaling server should handle this.
-		// We are consuming from the same topic, so we might get our own messages.
-		// We should ignore them.
+
 		sfuLogger.Warn("KAFKA", "sfuSignalToClient when shouldn't have", map[string]interface{}{
 			"commandType": sfuCommand.Type,
 			"payload":     sfuCommand.Payload,

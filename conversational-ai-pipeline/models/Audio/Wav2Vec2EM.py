@@ -7,6 +7,8 @@ from transformers import Wav2Vec2ForSequenceClassification, Wav2Vec2FeatureExtra
 model = None
 feature_extractor = None
 
+## Emotion Recognition based on Audio
+
 def load_emotion_model():
     global model, feature_extractor
     if model is None:

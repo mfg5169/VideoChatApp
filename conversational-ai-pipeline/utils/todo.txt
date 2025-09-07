@@ -1,0 +1,164 @@
+1. Have a simulared thinking delay 
+2. have a processing delay
+
+
+| Task                   | Tool/Model Suggestion             |
+| ---------------------- | --------------------------------- |
+| Speech-to-Text         | OpenAI Whisper, Google STT        |
+| Noise Reduction        | RNNoise, DeepFilterNet            |
+| Face/Emotion Detection | Mediapipe, OpenFace, Affectiva    |
+| Text Response          | OpenAI GPT-4o, Claude, Mistral    |
+| Text-to-Speech         | Coqui TTS, ElevenLabs, Google TTS |
+| Memory Storage         | FAISS, Pinecone, ChromaDB         |
+| Rule System            | Custom FSM or logic engine        |
+
+
+                    +-----------+
+                    |   Person  |
+                    +-----------+
+                          |
+            +-------------+-------------+
+            |                           |
+        [Audio]                     [Video]
+            |                           |
+     +-------------+         +----------------------+
+     | Noise Reduc.|         | Face & Emotion Det. |
+     +-------------+         +----------------------+
+            |                           |
+     +-------------+         +----------------------+
+     | Speech-to-Text|        | Optional: Summarizer|
+     +-------------+         +----------------------+
+            |                           |
+            +-------------+-------------+
+                          |
+               +----------------------+
+               |   ML/NLP Response    |
+               +----------------------+
+                          |
+       +----------+--------------+-----------+
+       |                         |           |
+  +----------+           +---------------+   |
+  |  Memory  |           | Emotion Gauge |   |
+  +----------+           +---------------+   |
+       |                         |           |
+       +-------------+-----------+           |
+                     |                       |
+            +---------------------+          |
+            |   Interrupt Logic   | <--------+
+            +---------------------+
+                     |
+              +-----------------+
+              |  Emit Response  |
+              +-----------------+
+                     |
+              +------------------+
+              | Text-to-Speech   |
+              +------------------+
+                     |
+              +------------------+
+              |   Natural Reply  |
+              +------------------+
+
+🔁 Integrated Pipeline (Updated Summary View)
+
+                    +-----------+
+                    |   Person  |
+                    +-----------+
+                          |
+         +----------------+-----------------+
+         |                                  |
+     [Audio Input]                     [Video Input]
+         |                                  |
+  +----------------+              +------------------------+
+  | Noise Reduction|              | Visual Preprocessing   |
+  +----------------+              +------------------------+
+         |                                  |
+  +----------------+              +------------------------+
+  | Speech-to-Text |              | Face & Emotion Detect  |
+  +----------------+              +------------------------+
+         |                                  |
+                                  +------------------------+
+                                  | Body Pose & Gesture    |
+                                  +------------------------+
+                                  +------------------------+
+                                  | Activity Recognition   |
+                                  +------------------------+
+         |                                  |
+         +---------------+------------------+
+                         |
+               +----------------------+
+               |   ML/NLP Response    |
+               +----------------------+
+                         |
+               +---------+-----------+
+               |       Context       |
+               |  (Memory + Emotion)|
+               +--------------------+
+                         |
+               +----------------------+
+               | Interrupt Logic      |
+               +----------------------+
+                         |
+               +----------------------+
+               | Emit Response (TTS)  |
+               +----------------------+
+
+🧠 MODULE-BY-MODULE BREAKDOWN WITH MODELS / LIBRARIES
+
+| Task                               | Model / Package                                   | JS/Web Integration?                                                    |
+| ---------------------------------- | ------------------------------------------------- | ---------------------------------------------------------------------- |
+| **Noise Reduction**                | RNNoise, DeepFilterNet, WebRTC VAD                | WebRTC API, RNNoise in WebAssembly                                     |
+| **Voice Activity Detection (VAD)** | WebRTC VAD, Silero VAD                            | WebRTC VAD via WebAssembly or MediaRecorder silence detection          |
+| **Speech-to-Text (STT)**           | OpenAI Whisper, Vosk, Google Cloud STT            | WebSocket bridge to Whisper backend, or Web Speech API (less accurate) |
+| **Emotion Detection from Speech**  | SER models (e.g., `pyAudioAnalysis`, `opensmile`) | Backend inference only (expose via API)                                |
+
+
+
+🟦 VISUAL PERCEPTION
+
+| Task                     | Model / Package                                  | JS/Web Integration?                                        |
+| ------------------------ | ------------------------------------------------ | ---------------------------------------------------------- |
+| **Face Detection**       | MediaPipe Face Mesh, Dlib, OpenCV                | ✅ MediaPipe JS                                             |
+| **Facial Emotion**       | Affectiva SDK, DeepFace, FER+                    | Limited JS support — do backend (e.g., DeepFace via Flask) |
+| **Body Pose / Gesture**  | MediaPipe Pose, OpenPose, MoveNet, YOLO-NAS-Pose | ✅ MediaPipe Pose JS                                        |
+| **Hand Tracking**        | MediaPipe Hands                                  | ✅ MediaPipe Hands JS                                       |
+| **Activity Recognition** | I3D, SlowFast, MoViNet, ViViT (Temporal CNNs)    | ❌ Backend-only (requires temporal window)                  |
+| **Object Detection**     | YOLOv8, Detectron2, Grounding DINO               | Backend via ONNX or PyTorch                                |
+| **Scene Understanding**  | CLIP + Scene Tags, Places365                     | Backend via Python                                         |
+| **Gaze Estimation**      | OpenGaze, ETH-XGaze 
+
+| ** Understnad Screen                             | ❌ Requires backend GPU                                     |
+
+
+🟨 NLP + RESPONSE
+
+| Task                       | Model / Package                         | JS/Web Integration?                                      |
+| -------------------------- | --------------------------------------- | -------------------------------------------------------- |
+| **LLM**                    | OpenAI GPT-4o, Mistral, Llama 3         | API via backend (OpenAI SDK or HuggingFace endpoint)     |
+| **Memory Embedding**       | SentenceTransformers + FAISS / Chroma   | Backend storage server with REST or WebSocket interface  |
+| **Emotion & Tone in Text** | VADER, BERT fine-tuned for sentiment    | Backend only                                             |
+| **Interrupt Decision**     | Custom logic / FSM + urgency classifier | Run rule-based logic client-side, ML-based logic backend |
+
+
+🟥 RESPONSE GENERATION
+
+| Task                               | Model / Package                    | JS/Web Integration?                     |
+| ---------------------------------- | ---------------------------------- | --------------------------------------- |
+| **Text-to-Speech**                 | ElevenLabs, Google TTS, Coqui TTS  | ElevenLabs & Google TTS offer HTTP APIs |
+| **Natural Pause & Delay**          | Rule-based logic                   | ✅ Easy to implement in JS               |
+| **Multimodal Reply Delay (300ms)** | JS `setTimeout` with speech events | ✅ Yes                                   |
+
+
+User Speaks & Gestures
+   ↓
+Audio → WebRTC → Backend → Whisper → Text
+Video → MediaPipe JS → Keypoints → JSON → Backend (Optional) → Activity/Emotion
+   ↓
+Backend → GPT-4o (Text + Emotion + Activity) → Response
+   ↓
+Frontend: Plays TTS audio + Updates UI
+
+View Screen
+
+- Finetune models without outputs if neccessary using the final embedding layer
+ex: https://www.kaggle.com/models/google/trillsson/code  used for audio embeddings 

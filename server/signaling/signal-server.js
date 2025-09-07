@@ -32,18 +32,15 @@ const Logger = {
   
   getCallerInfo(stack) {
     try {
-      // Split stack into lines and find the caller (skip the first 3 lines: Error, formatMessage, and the logging method)
       const lines = stack.split('\n');
       if (lines.length >= 4) {
         const callerLine = lines[3];
-        // Extract function name and file info
         const match = callerLine.match(/at\s+(.+?)\s+\((.+?):(\d+):(\d+)\)/);
         if (match) {
           const functionName = match[1];
           const filePath = match[2];
           const lineNumber = match[3];
           
-          // Extract just the filename from the full path
           const fileName = filePath.split('/').pop() || filePath.split('\\').pop() || filePath;
           
           return `${functionName}@${fileName}:${lineNumber}`;
@@ -84,7 +81,6 @@ const Logger = {
   }
 };
 
-// Global state tracking
 const ServerState = {
   startTime: new Date().toISOString(),
   totalConnections: 0,
@@ -167,7 +163,6 @@ setSFUCommandHandler((sfuCommand) => {
   });
   
   if (sfuCommand.type === 'sfuSignalToClient') {
-    // Handle SFU signals to clients using the SfuSignalToClient function
     const targetInfo = identifyMessageSource(sfuCommand.payload?.targetClientId);
     Logger.info('KAFKA', 'Processing SFU signal to client', {
       sourceType: 'sfu',
@@ -177,22 +172,19 @@ setSFUCommandHandler((sfuCommand) => {
     });
     SfuSignalToClient(sfuCommand.payload, clients);
   } else if (sfuCommand.type === 'webrtcSignal') {
-    // Handle WebRTC signals from clients to SFU
     Logger.info('KAFKA', 'Processing WebRTC signal from client to SFU', {
       sourceInfo: sourceInfo,
       signalType: sfuCommand.payload.type,
       meetingId: sfuCommand.payload.meetingId
     });
     
-    // This message should be forwarded to the appropriate SFU
-    // The SFU will consume this message from Kafka and process it
+
     Logger.debug('KAFKA', 'WebRTC signal forwarded to SFU via Kafka', {
       sourceInfo: sourceInfo,
       signalType: sfuCommand.payload.type,
       meetingId: sfuCommand.payload.meetingId
     });
   } else if (sfuCommand.type === 'meetingEvent') {
-    // Handle SFU meeting events
     const { meetingId, eventType, eventData } = sfuCommand.payload;
     
     Logger.info('KAFKA', 'Processing meeting event from SFU', {
@@ -201,7 +193,6 @@ setSFUCommandHandler((sfuCommand) => {
       eventData
     });
     
-    // Broadcast to all clients in the meeting
     broadcastToMeeting(meetingId, null, {
       type: 'meetingEvent',
       payload: {

@@ -7,9 +7,9 @@ Shows how to check if someone is speaking given audio data format
 import pyaudio
 import numpy as np
 import time
-from models.VAD import WebRtC as VAD
-from models.Whisper import transcribe_bytes, transcribe_buffer, create_audio_buffer, add_to_buffer
-from models.Wav2Vec2EM import recognize_emotion_from_buffer, get_emotion_labels
+from models.Audio.VAD import WebRtC as VAD
+from models.Audio.Whisper import transcribe_bytes, transcribe_buffer, create_audio_buffer, add_to_buffer
+from models.Audio.Wav2Vec2EM import recognize_emotion_from_buffer, get_emotion_labels
 
 
 def test_speech_detection():
@@ -117,7 +117,7 @@ def explain_audio_format():
     print()
     print("4. Usage Example:")
     print("   ```python")
-    print("   from models.VAD import WebRtC as VAD")
+    print("   from models.Audio.VAD import WebRtC as VAD")
     print("   ")
     print("   # Initialize VAD")
     print("   vad = VAD(aggressiveness=2)")

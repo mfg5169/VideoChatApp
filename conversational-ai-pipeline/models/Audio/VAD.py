@@ -27,19 +27,17 @@ class WebRtC:
             # We'll process this in 30ms chunks (480 samples) for better accuracy
             
             frame_length = len(frame)
-            samples_per_30ms = int(self.sample_rate * 0.03)  # 480 samples for 30ms
+            samples_per_30ms = int(self.sample_rate * 0.03) 
             
-            # If frame is too short, pad with zeros
-            if frame_length < samples_per_30ms * 2:  # Need at least 2 bytes per sample
+            if frame_length < samples_per_30ms * 2:  
                 return False
                 
-            # Process the frame in 30ms chunks
             speech_detected = False
             num_chunks = 0
             
             for i in range(0, frame_length - samples_per_30ms * 2, samples_per_30ms * 2):
                 chunk = frame[i:i + samples_per_30ms * 2]
-                if len(chunk) == samples_per_30ms * 2:  # Ensure we have a complete 30ms chunk
+                if len(chunk) == samples_per_30ms * 2:  
                     try:
                         if self.vad.is_speech(chunk, self.sample_rate):
                             speech_detected = True
@@ -48,7 +46,6 @@ class WebRtC:
                         print(f"VAD processing error: {e}")
                         continue
             
-            # Return True if any chunk contains speech
             return speech_detected
             
         except Exception as e:
@@ -59,7 +56,7 @@ class WebRtC:
 if __name__ == "__main__":
     # Test with silence
     vad = WebRtC(aggressiveness=3, sample_rate=16000)
-    silence_frame = b'\x00\x00' * 480  # 30ms of silence at 16kHz
+    silence_frame = b'\x00\x00' * 480 
     result = vad.is_speech(silence_frame)
     print(f"Silence test - Contains speech: {result}")
     

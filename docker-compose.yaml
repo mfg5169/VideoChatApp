@@ -6,7 +6,7 @@ services:
     image: redis/redis-stack-server:latest
     command: redis-server /usr/local/etc/redis/redis.conf 
     volumes:
-      - ./redis.conf:/usr/local/etc/redis/redis.conf
+      - ./configs/redis/redis.conf:/usr/local/etc/redis/redis.conf
     ports:
       - "6379:6379"
       - "16379:16379" # Cluster bus port
@@ -23,7 +23,7 @@ services:
     image: redis/redis-stack-server:latest
     command: redis-server /usr/local/etc/redis/redis.conf 
     volumes:
-      - ./redis.conf:/usr/local/etc/redis/redis.conf
+      - ./configs/redis/redis.conf:/usr/local/etc/redis/redis.conf
     ports:
       - "6380:6379"
       - "16380:16379"
@@ -47,7 +47,7 @@ services:
 
     #mounts the redis.conf file to the container
     volumes:
-      - ./redis.conf:/usr/local/etc/redis/redis.conf
+      - ./configs/redis/redis.conf:/usr/local/etc/redis/redis.conf
 
     #exposes the ports to the host ( Format: "HOST_PORT:CONTAINER_PORT")
     ports:
@@ -74,7 +74,7 @@ services:
     image: redis/redis-stack-server:latest
     command: redis-server /usr/local/etc/redis/redis.conf
     volumes:
-      - ./redis.conf:/usr/local/etc/redis/redis.conf
+      - ./configs/redis/redis.conf:/usr/local/etc/redis/redis.conf
     ports:
       - "6382:6379"
       - "16382:16379"
@@ -92,7 +92,7 @@ services:
     image: redis/redis-stack-server:latest
     command: redis-server /usr/local/etc/redis/redis.conf
     volumes:
-      - ./redis.conf:/usr/local/etc/redis/redis.conf
+      - ./configs/redis/redis.conf:/usr/local/etc/redis/redis.conf
     ports:
       - "6383:6379"
       - "16383:16379"
@@ -110,7 +110,7 @@ services:
     image: redis/redis-stack-server:latest
     command: redis-server /usr/local/etc/redis/redis.conf
     volumes:
-      - ./redis.conf:/usr/local/etc/redis/redis.conf
+      - ./configs/redis/redis.conf:/usr/local/etc/redis/redis.conf
     ports:
       - "6384:6379"
       - "16384:16379"
@@ -128,7 +128,7 @@ services:
     image: redis:7-alpine
     command: sh -c "apk add --no-cache bash && chmod +x /setup-cluster.sh && /setup-cluster.sh"
     volumes:
-      - ./setup-cluster.sh:/setup-cluster.sh
+      - ./scripts/setup-cluster.sh:/setup-cluster.sh
     networks:
       - webrtc-net
     depends_on:
@@ -386,7 +386,7 @@ services:
   #   image: redis/redis-stack-server:latest
   #   command: redis-server /usr/local/etc/redis/redis-single.conf
   #   volumes:
-  #     - ./redis-single.conf:/usr/local/etc/redis/redis-single.conf
+  #     - ./configs/redis/redis-single.conf:/usr/local/etc/redis/redis-single.conf
   #   ports:
   #     - "6385:6379"
   #     - "16385:16379"
@@ -396,7 +396,7 @@ services:
     image: redis/redis-stack-server:latest
     command: redis-server /usr/local/etc/redis/redis-sfu-cluster.conf
     volumes:
-      - ./redis-sfu-cluster.conf:/usr/local/etc/redis/redis-sfu-cluster.conf
+      - ./configs/redis/redis-sfu-cluster.conf:/usr/local/etc/redis/redis-sfu-cluster.conf
     ports:
       - "6385:6379"
       - "16385:16379"
@@ -413,7 +413,7 @@ services:
     image: redis/redis-stack-server:latest
     command: redis-server /usr/local/etc/redis/redis-sfu-cluster.conf
     volumes:
-      - ./redis-sfu-cluster.conf:/usr/local/etc/redis/redis-sfu-cluster.conf
+      - ./configs/redis/redis-sfu-cluster.conf:/usr/local/etc/redis/redis-sfu-cluster.conf
     ports:
       - "6386:6379"
       - "16386:16379"
@@ -430,7 +430,7 @@ services:
     image: redis/redis-stack-server:latest
     command: redis-server /usr/local/etc/redis/redis-sfu-cluster.conf
     volumes:
-      - ./redis-sfu-cluster.conf:/usr/local/etc/redis/redis-sfu-cluster.conf
+      - ./configs/redis/redis-sfu-cluster.conf:/usr/local/etc/redis/redis-sfu-cluster.conf
     ports:
       - "6387:6379"
       - "16387:16379"
@@ -447,7 +447,7 @@ services:
     image: redis/redis-stack-server:latest
     command: redis-server /usr/local/etc/redis/redis-sfu-cluster.conf
     volumes:
-      - ./redis-sfu-cluster.conf:/usr/local/etc/redis/redis-sfu-cluster.conf
+      - ./configs/redis/redis-sfu-cluster.conf:/usr/local/etc/redis/redis-sfu-cluster.conf
     ports:
       - "6388:6379"
       - "16388:16379"
@@ -464,7 +464,7 @@ services:
     image: redis/redis-stack-server:latest
     command: redis-server /usr/local/etc/redis/redis-sfu-cluster.conf
     volumes:
-      - ./redis-sfu-cluster.conf:/usr/local/etc/redis/redis-sfu-cluster.conf
+      - ./configs/redis/redis-sfu-cluster.conf:/usr/local/etc/redis/redis-sfu-cluster.conf
     ports:
       - "6389:6379"
       - "16389:16379"
@@ -481,7 +481,7 @@ services:
     image: redis/redis-stack-server:latest
     command: redis-server /usr/local/etc/redis/redis-sfu-cluster.conf
     volumes:
-      - ./redis-sfu-cluster.conf:/usr/local/etc/redis/redis-sfu-cluster.conf
+      - ./configs/redis/redis-sfu-cluster.conf:/usr/local/etc/redis/redis-sfu-cluster.conf
     ports:
       - "6390:6379"
       - "16390:16379"
@@ -499,7 +499,7 @@ services:
     image: redis:7-alpine
     command: sh -c "apk add --no-cache bash && chmod +x /setup-sfu-cluster.sh && /setup-sfu-cluster.sh"
     volumes:
-      - ./setup-sfu-cluster.sh:/setup-sfu-cluster.sh
+      - ./scripts/setup-sfu-cluster.sh:/setup-sfu-cluster.sh
     networks:
       - webrtc-net
     depends_on:
