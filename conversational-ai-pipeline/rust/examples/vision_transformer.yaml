@@ -1,0 +1,71 @@
+metadata:
+  name: "example-vit"
+  version: "1.0.0"
+  description: "Example Vision Transformer model configuration"
+  author: "Model Runtime"
+  license: "MIT"
+  task: "image-classification"
+
+architecture: vision_transformer
+
+hyperparameters:
+  image_size: 224
+  patch_size: 16
+  num_channels: 3
+  hidden_size: 768
+  num_attention_heads: 12
+  num_layers: 12
+  intermediate_size: 3072
+  num_classes: 1000
+
+layers:
+  - layer_type: "patch_embedding"
+    name: "patch_embed"
+    input_dims: [3, 224, 224]
+    output_dims: [196, 768]
+    params:
+      patch_size: 16
+
+  - layer_type: "cls_token"
+    name: "cls_token"
+    input_dims: [1]
+    output_dims: [768]
+    params: {}
+
+  - layer_type: "position_embedding"
+    name: "pos_embed"
+    input_dims: [197]
+    output_dims: [768]
+    params: {}
+
+  - layer_type: "attention"
+    name: "blocks.0.attn"
+    input_dims: [768]
+    output_dims: [768]
+    params:
+      num_heads: 12
+
+  - layer_type: "feed_forward"
+    name: "blocks.0.mlp"
+    input_dims: [768]
+    output_dims: [768]
+    params:
+      intermediate_size: 3072
+
+weights:
+  - path: "vit_weights.safetensors"
+    format: "safetensors"
+
+preprocessing:
+  normalization:
+    mean: [0.5, 0.5, 0.5]
+    std: [0.5, 0.5, 0.5]
+  resize:
+    width: 224
+    height: 224
+    interpolation: "bicubic"
+
+postprocessing:
+  output_format: "logits"
+  confidence_threshold: 0.0
+

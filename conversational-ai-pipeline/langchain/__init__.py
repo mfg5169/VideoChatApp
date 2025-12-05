@@ -27,6 +27,24 @@ from .vision_tools import (
     compare_frames,
     default_vision_tool_manager
 )
+from .model_integration import (
+    ModelBackend,
+    ONNXModelBackend,
+    RustModelBackend,
+    CppModelBackend,
+    ModelRegistry,
+    default_registry
+)
+from .model_tools import (
+    ModelToolManager,
+    call_onnx_model,
+    call_rust_model,
+    call_cpp_model,
+    register_model,
+    call_registered_model,
+    list_registered_models,
+    default_model_tool_manager
+)
 
 __all__ = [
     # Agent
@@ -56,6 +74,24 @@ __all__ = [
     "analyze_camera_video",
     "compare_frames",
     "default_vision_tool_manager",
+    
+    # Model Integration
+    "ModelBackend",
+    "ONNXModelBackend",
+    "RustModelBackend",
+    "CppModelBackend",
+    "ModelRegistry",
+    "default_registry",
+    
+    # Model Tools
+    "ModelToolManager",
+    "call_onnx_model",
+    "call_rust_model",
+    "call_cpp_model",
+    "register_model",
+    "call_registered_model",
+    "list_registered_models",
+    "default_model_tool_manager",
 ]
 
 __version__ = "0.1.0"

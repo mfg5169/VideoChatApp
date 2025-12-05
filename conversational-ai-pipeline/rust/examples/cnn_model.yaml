@@ -1,0 +1,66 @@
+metadata:
+  name: "example-cnn"
+  version: "1.0.0"
+  description: "Example CNN model configuration for image classification"
+  author: "Model Runtime"
+  license: "MIT"
+  task: "image-classification"
+
+architecture: cnn
+
+hyperparameters:
+  num_channels: 3
+  image_size: 224
+  num_classes: 1000
+
+layers:
+  - layer_type: "conv2d"
+    name: "conv1"
+    input_dims: [3, 224, 224]
+    output_dims: [64, 224, 224]
+    params:
+      kernel_size: 7
+      stride: 2
+      padding: 3
+
+  - layer_type: "conv2d"
+    name: "conv2"
+    input_dims: [64, 112, 112]
+    output_dims: [128, 112, 112]
+    params:
+      kernel_size: 3
+      stride: 1
+      padding: 1
+
+  - layer_type: "conv2d"
+    name: "conv3"
+    input_dims: [128, 112, 112]
+    output_dims: [256, 56, 56]
+    params:
+      kernel_size: 3
+      stride: 2
+      padding: 1
+
+  - layer_type: "linear"
+    name: "classifier"
+    input_dims: [256]
+    output_dims: [1000]
+    params: {}
+
+weights:
+  - path: "cnn_weights.safetensors"
+    format: "safetensors"
+
+preprocessing:
+  normalization:
+    mean: [0.485, 0.456, 0.406]
+    std: [0.229, 0.224, 0.225]
+  resize:
+    width: 224
+    height: 224
+    interpolation: "bilinear"
+
+postprocessing:
+  output_format: "probabilities"
+  confidence_threshold: 0.1
+

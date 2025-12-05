@@ -1,0 +1,29 @@
+{
+  "example_onnx_classifier": {
+    "name": "example_onnx_classifier",
+    "type": "onnx",
+    "model_path": "./models/classifier.onnx",
+    "description": "Example ONNX image classifier",
+    "input_types": ["image"],
+    "output_format": "probabilities"
+  },
+  "example_rust_transformer": {
+    "name": "example_rust_transformer",
+    "type": "rust",
+    "model_path": "./rust/models/transformer",
+    "config_path": "./rust/models/transformer/config.yaml",
+    "description": "Example Rust transformer model",
+    "input_types": ["text", "tensor"],
+    "output_format": "logits"
+  },
+  "example_cpp_vision": {
+    "name": "example_cpp_vision",
+    "type": "cpp",
+    "model_path": "./cpp_models/vision_model",
+    "cpp_binary": "./cpp_models/inference_binary",
+    "description": "Example C++ vision model",
+    "input_types": ["image", "video"],
+    "output_format": "detections"
+  }
+}
+

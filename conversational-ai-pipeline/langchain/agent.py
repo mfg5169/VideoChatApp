@@ -21,6 +21,7 @@ import operator
 from .memory import MemoryManager
 from .tools import ToolManager
 from .vision_tools import VisionToolManager
+from .model_tools import ModelToolManager
 import base64
 from pathlib import Path
 import os
@@ -71,6 +72,9 @@ class ConversationalAgent:
         # Initialize vision tool manager
         self.vision_tool_manager = VisionToolManager()
         
+        # Initialize model tool manager
+        self.model_tool_manager = ModelToolManager()
+        
         # System prompt
         self.system_prompt = system_prompt or self._default_system_prompt()
         
@@ -93,6 +97,8 @@ Key capabilities:
 - Perform calculations and get current time
 - Analyze screen recordings to understand what the user is viewing
 - Analyze camera videos to understand the user's visual context
+- Call external models (ONNX, Rust, C++) for specialized inference tasks
+- Register and manage multiple model backends for different tasks
 
 When you receive images or videos, analyze them carefully and provide detailed descriptions.
 For screen recordings, focus on understanding what applications, content, or activities are visible.
@@ -105,10 +111,12 @@ future reference."""
     def _build_agent(self) -> StateGraph:
         """Build the agentic workflow using LangGraph."""
         
-        # Get tools (including vision tools)
+        # Get tools (including vision tools and model tools)
         tools = self.tool_manager.get_tools()
         vision_tools = self.vision_tool_manager.get_tools()
+        model_tools = self.model_tool_manager.get_tools()
         tools.extend(vision_tools)
+        tools.extend(model_tools)
         tools_by_name = {tool.name: tool for tool in tools}
         
         # Bind tools to model
@@ -437,6 +445,32 @@ future reference."""
         """Update the system prompt and rebuild the agent."""
         self.system_prompt = new_prompt
         self.agent = self._build_agent()
+    
+    def register_external_model(
+        self,
+        model_name: str,
+        model_type: str,
+        model_path: str,
+        config_path: Optional[str] = None
+    ) -> None:
+        """
+        Register an external model for the agent to use.
+        
+        Args:
+            model_name: Name to register the model under
+            model_type: Type of model ("onnx", "rust", "cpp")
+            model_path: Path to the model file or directory
+            config_path: Optional path to configuration file
+        """
+        self.model_tool_manager.register_model_from_config(
+            model_name, model_type, model_path, config_path
+        )
+        # Rebuild agent to include the new model
+        self.agent = self._build_agent()
+    
+    def list_available_models(self) -> List[str]:
+        """List all available external models."""
+        return self.model_tool_manager.registry.list_models()
 
 
 def create_agent(
