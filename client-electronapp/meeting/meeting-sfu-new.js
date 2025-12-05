@@ -58,6 +58,9 @@ function initializeManagers() {
   signalingManager = new window.SignalingManager();
   signalingManager.initialize(window.AppState.signalingUrl);
   
+  // Provide the signaling manager to the WebRTC manager
+  webrtcManager.setSignalingManager(signalingManager);
+
   // Initialize participants manager
   participantsManager = new window.ParticipantsManager();
   
@@ -88,11 +91,50 @@ function setupCallbacks() {
   // WebRTC manager callbacks
   webrtcManager.setCallbacks({
     onTrack: (event) => {
-      const remoteStream = event.streams[0];
-      if (remoteStream) {
-        const remotePeerId = event.track.id || `peer-${Date.now()}`;
-        const participantName = event.track.label || `Participant ${remotePeerId.slice(0, 8)}`;
-        participantsManager.addRemoteVideo(remotePeerId, remoteStream, participantName);
+      // Some SFUs (or browsers) may deliver ontrack with empty streams array.
+      // Fallback: construct a MediaStream from the track.
+      const stream = (event.streams && event.streams[0]) || new MediaStream([event.track]);
+      if (!stream) return;
+
+      const track = event.track;
+      const hasVideo = track.kind === 'video' || stream.getVideoTracks().length > 0;
+      // Use a stable key based on track.id to avoid duplicate tiles when stream IDs change
+      const videoKey = `vid-${track.id}`;
+      const audioKey = `aud-${track.id}`;
+      const participantName = `Participant ${videoKey.slice(-8)}`;
+
+      // If the stream has a video track, show a single tile for this stream.
+      if (hasVideo) {
+        // If there was an audio-only element created before video arrived, remove it now.
+        const existingAudio = document.getElementById(`audio-${audioKey}`);
+        if (existingAudio) existingAudio.remove();
+
+        participantsManager.addRemoteVideo(videoKey, stream, participantName);
+      } else {
+        // Audio-only stream: attach to a hidden audio element without creating a video tile.
+        let audioEl = document.getElementById(`audio-${audioKey}`);
+        if (!audioEl) {
+          audioEl = document.createElement('audio');
+          audioEl.id = `audio-${audioKey}`;
+          audioEl.autoplay = true;
+          audioEl.style.display = 'none';
+          document.body.appendChild(audioEl);
+        }
+        // Always (re)attach the latest stream object
+        audioEl.srcObject = stream;
+        // Ensure playback starts
+        if (typeof audioEl.play === 'function') {
+          audioEl.play().catch(() => {});
+        }
+      }
+
+      // Cleanup when a track ends: remove audio element and/or video tile for this stream
+      if (event.track) {
+        event.track.onended = () => {
+          const audioEl = document.getElementById(`audio-${audioKey}`);
+          if (audioEl) audioEl.remove();
+          participantsManager.removeRemoteVideo(videoKey);
+        };
       }
     },
     onConnectionStateChange: (state) => {

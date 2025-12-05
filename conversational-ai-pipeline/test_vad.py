@@ -135,7 +135,7 @@ def test_whisper():
     print("Speak into your microphone to test whisper")
     print("Press Ctrl+C to stop")
     print()
-    
+    import time
     # Audio configuration (matches the recording setup)
     FORMAT = pyaudio.paInt16
     CHANNELS = 1
@@ -163,25 +163,43 @@ def test_whisper():
         print("Recording audio... Speak clearly!")
         print("(Whisper needs several seconds of audio for best results)")
         print()
-
+        prev_start, prev_len = 0, 0
         while True:
             # Read audio data
             audio_data = stream.read(CHUNK, exception_on_overflow=False)
             
             # Add to buffer
+    
             audio_buffer = add_to_buffer(audio_buffer, audio_data)
-            
+            # print(len(audio_buffer))
             # Transcribe every 5 seconds (approximately 78 chunks at 1024 samples)
-            if len(audio_buffer) >= 78:  # ~5 seconds of audio
-                text = transcribe_buffer(audio_buffer)
+            
+            if (len(audio_buffer) - prev_len) >= 78:  # ~5 seconds of audio
+                start_time = time.time()
+                text = transcribe_buffer(audio_buffer[0:])
+                elapsed_time = time.time() - start_time
+                print(f"[Whisper] Transcription took {elapsed_time:.2f} seconds.")
+                # print(prev_start, prev_len, len(audio_buffer))
+
+                prev_start += (len(audio_buffer) - prev_len)
+                prev_len = len(audio_buffer)
+                
                 if text.strip():
-                    print(f"Transcribed: {text}")
-                audio_buffer = []  # Clear buffer after transcription
+                    # Overwrite previous line by using \r and padding with spaces
+                    print(f"Transcribed: {text}" + " " * 50, end='\r', flush=True)
+
+                
+                # audio_buffer = []  # Clear buffer after transcription
             
             time.sleep(0.1)  # Small delay to prevent excessive processing
+            # if len(audio_buffer) >= 78:
+            #     text = transcribe_buffer(audio_buffer)
+            #     if text.strip():
+            #         print(f"Whisper transcription: {text}")
     
     except KeyboardInterrupt:
-        print("\n\nStopping whisper test...")
+        print()  # Newline to preserve the last overwritten transcription
+        print("Stopping whisper test...")
         
         # Transcribe any remaining audio
         if audio_buffer:

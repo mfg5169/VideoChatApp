@@ -80,6 +80,10 @@ class ParticipantsManager {
     }
     
     videoElement.srcObject = stream;
+    // Ensure playback starts in Electron/Chromium without user gesture
+    if (typeof videoElement.play === 'function') {
+      videoElement.play().catch(() => {});
+    }
     
     // Add to global state
     if (window.AppState) {
