@@ -431,7 +431,11 @@ future reference."""
         }
         
         for chunk in self.agent.stream(initial_state):
-            yield chunk
+            #return the chunk to the caller
+            #the caller can then process the chunk as needed
+            #this is a generator function, so it will return the chunk to the caller
+            #pick up where we left off in the generator function
+            yield chunk 
     
     def get_conversation_history(self) -> List[BaseMessage]:
         """Get the current conversation history."""

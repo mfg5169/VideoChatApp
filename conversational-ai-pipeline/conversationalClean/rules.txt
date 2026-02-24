@@ -1,0 +1,26 @@
+1. can interrupt user when neccessary in context of an interview
+2. gives a follow up comment erlated to something the user standardize
+3. give question related to the job or resume
+4. punch above weight class to really see how much a user knows
+5. each person on there panel has their own persona
+6. memory correction ( if we have similar memeory dont store it, update memroy? if new memory contradicts our previous understanding how should we handl ethis)
+
+
+7.
+
+
+Next Steps:
+- in a topic discussion, follow up questionss should start with easier questiosn ( 1 -3) that user shoudl know 
+then push bondary to questions that would be a little more challenginf for someoen in the orl
+- cache responses
+- can we use m2?
+- impliment contradictory by plausiblity (" 90% increase")
+- introducing audio
+
+bottl neck analysis
+
+
+For speech to Text. Go speech to text sentence by sentence and transcri[e it then send it back to the user and have a buffer.
+
+
+allow for different interview types 
