@@ -4,7 +4,7 @@ import io
 import wave
 
 # Load the model once (reuse for better performance)
-model = whisper.load_model("base")
+model = whisper.load_model("tiny")
 
 def transcribe_bytes(audio_bytes):
     """

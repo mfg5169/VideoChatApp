@@ -49,10 +49,17 @@ const AppState = {
     const meetingID = urlParams.get('meetingId') || urlParams.get('meetingID') || 'DEMO-123';
     const meetingName = sessionStorage.getItem('meetingName') || 'Meeting';
     const user = JSON.parse(sessionStorage.getItem('user'));
+    // Ensure a stable ephemeral client ID if no authenticated user is present
+    const storedId = sessionStorage.getItem('clientEphemeralId') || (() => {
+      const id = 'client-' + Math.random().toString(36).slice(2, 10);
+      sessionStorage.setItem('clientEphemeralId', id);
+      console.log('clientEphemeralId', id);
+      return id;
+    })();
     
     this.updateState({
       meetingId: meetingID,
-      userId: user?.id,
+      userId: user?.id || storedId,
       userName: user?.name || user?.email,
       signalingUrl: sessionStorage.getItem('assignedSignalingServerUrl')
     });

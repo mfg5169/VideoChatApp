@@ -41,6 +41,7 @@ func setupClientPeerConnection(meeting *Meeting, clientID string, replyTo string
 		ID:             clientID,
 		MeetingID:      meeting.ID,
 		PeerConnection: peerConnection,
+		ReplyTo:        replyTo,
 	}
 
 	meeting.mu.Lock()
@@ -69,12 +70,29 @@ func setupClientPeerConnection(meeting *Meeting, clientID string, replyTo string
 		sendSFUSignalToClient(clientID, "candidate", "", c, meeting.ID, replyTo)
 	})
 
-	peerConnection.OnConnectionStateChange(func(s webrtc.PeerConnectionState) {
-		sfuLogger.Info("WEBRTC", "Peer connection state changed", map[string]interface{}{
+    peerConnection.OnConnectionStateChange(func(s webrtc.PeerConnectionState) {
+		sfuLogger.Debug("WEBRTC", "Peer connection state changed", map[string]interface{}{
 			"clientID":  clientID,
 			"meetingID": meeting.ID,
 			"state":     s.String(),
 		})
+
+		if s == webrtc.PeerConnectionStateConnected {
+			sfuLogger.Debug("WEBRTC", "Connection established, adding existing tracks", map[string]interface{}{
+				"clientID":       clientID,
+				"meetingID":      meeting.ID,
+				"existingTracks": len(meeting.trackLocals),
+			})
+
+			// Now that the connection is established, add any existing tracks
+			meeting.mu.RLock()
+			if clientPeer, exists := meeting.clients[clientID]; exists {
+				for _, trackLocal := range meeting.trackLocals {
+					addTrackToPeer(peerConnection, trackLocal, clientPeer.ReplyTo)
+				}
+			}
+			meeting.mu.RUnlock()
+		}
 
 		if s == webrtc.PeerConnectionStateFailed || s == webrtc.PeerConnectionStateClosed {
 			sfuLogger.Warn("WEBRTC", "PeerConnection closed or failed", map[string]interface{}{
@@ -106,8 +124,65 @@ func setupClientPeerConnection(meeting *Meeting, clientID string, replyTo string
 				sfuState.UpdateMetrics(sfuMetrics.ConnectedClients, sfuMetrics.ActiveMeetings)
 			}
 			meeting.mu.Unlock()
-		}
-	})
+        }
+    })
+
+    // Monitor signaling state to safely trigger any pending renegotiations
+    peerConnection.OnSignalingStateChange(func(s webrtc.SignalingState) {
+        sfuLogger.Debug("WEBRTC", "Peer signaling state changed", map[string]interface{}{
+            "clientID":  clientID,
+            "meetingID": meeting.ID,
+            "state":     s.String(),
+        })
+
+        if s == webrtc.SignalingStateStable {
+            // Find the client for this PeerConnection
+            meetingsMu.RLock()
+            for _, mtg := range meetings {
+                mtg.mu.RLock()
+                for cid, cpeer := range mtg.clients {
+                    if cpeer.PeerConnection == peerConnection && cpeer.RenegotiatePending {
+                        // Clear the flag before attempting
+                        cpeer.RenegotiatePending = false
+                        mtg.mu.RUnlock()
+                        meetingsMu.RUnlock()
+
+                        sfuLogger.Debug("WEBRTC", "Signaling stable; processing pending renegotiation", map[string]interface{}{
+                            "clientID":  cid,
+                            "meetingID": mtg.ID,
+                        })
+
+                        // Create and send an offer to this client
+                        offer, err := peerConnection.CreateOffer(nil)
+                        if err != nil {
+                            sfuLogger.Error("WEBRTC", "Error creating offer for pending renegotiation", err, map[string]interface{}{
+                                "clientID": cid,
+                            })
+                            sfuState.IncrementCounters(0, 0, 1)
+                            return
+                        }
+                        if err := peerConnection.SetLocalDescription(offer); err != nil {
+                            sfuLogger.Error("WEBRTC", "Error setting local description for pending renegotiation", err, map[string]interface{}{
+                                "clientID": cid,
+                            })
+                            sfuState.IncrementCounters(0, 0, 1)
+                            return
+                        }
+
+                        // Send the offer to the appropriate client
+                        sendSFUSignalToClient(cid, "offer", offer.SDP, nil, mtg.ID, cpeer.ReplyTo)
+                        sfuLogger.Info("WEBRTC", "Sent pending renegotiation offer to client", map[string]interface{}{
+                            "clientID":  cid,
+                            "meetingID": mtg.ID,
+                        })
+                        return
+                    }
+                }
+                mtg.mu.RUnlock()
+            }
+            meetingsMu.RUnlock()
+        }
+    })
 
 	peerConnection.OnTrack(func(remoteTrack *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) {
 		sfuLogger.Info("WEBRTC", "Received remote track", map[string]interface{}{
@@ -204,17 +279,14 @@ func setupClientPeerConnection(meeting *Meeting, clientID string, replyTo string
 		}
 	})
 
-	sfuLogger.Debug("WEBRTC", "Adding existing tracks to new client", map[string]interface{}{
+	sfuLogger.Debug("WEBRTC", "Deferring track addition until connection is established", map[string]interface{}{
 		"clientID":       clientID,
 		"meetingID":      meeting.ID,
 		"existingTracks": len(meeting.trackLocals),
 	})
 
-	meeting.mu.RLock()
-	for _, trackLocal := range meeting.trackLocals {
-		addTrackToPeer(peerConnection, trackLocal, replyTo)
-	}
-	meeting.mu.RUnlock()
+	// Don't add tracks immediately - wait for the connection to be established
+	// This will be handled in the OnConnectionStateChange callback
 
 	sfuLogger.Info("WEBRTC", "Client peer connection setup completed", map[string]interface{}{
 		"clientID":     clientID,
@@ -231,7 +303,8 @@ func addTrackToPeer(pc *webrtc.PeerConnection, trackLocal *webrtc.TrackLocalStat
 		"streamID":  trackLocal.StreamID(),
 	})
 
-	_, err := pc.AddTransceiverFromKind(trackLocal.Kind(), webrtc.RTPTransceiverInit{
+	// Create a transceiver for the track to ensure it's included in the SDP
+	transceiver, err := pc.AddTransceiverFromKind(trackLocal.Kind(), webrtc.RTPTransceiverInit{
 		Direction: webrtc.RTPTransceiverDirectionSendonly,
 	})
 	if err != nil {
@@ -243,6 +316,13 @@ func addTrackToPeer(pc *webrtc.PeerConnection, trackLocal *webrtc.TrackLocalStat
 		return
 	}
 
+	sfuLogger.Debug("WEBRTC", "Transceiver created successfully", map[string]interface{}{
+		"trackID":   trackLocal.ID(),
+		"trackKind": trackLocal.Kind().String(),
+		"direction": transceiver.Direction().String(),
+	})
+
+	// Now add the track to the peer connection
 	_, err = pc.AddTrack(trackLocal)
 	if err != nil {
 		sfuLogger.Error("WEBRTC", "Error adding track to peer connection", err, map[string]interface{}{
@@ -258,54 +338,82 @@ func addTrackToPeer(pc *webrtc.PeerConnection, trackLocal *webrtc.TrackLocalStat
 		"trackKind": trackLocal.Kind().String(),
 	})
 
-	// Trigger renegotiation by creating and sending an offer
-	offer, err := pc.CreateOffer(nil)
-	if err != nil {
-		sfuLogger.Error("WEBRTC", "Error creating offer for renegotiation", err, map[string]interface{}{
-			"trackID": trackLocal.ID(),
-		})
-		sfuState.IncrementCounters(0, 0, 1)
-		return
-	}
+    // Check if we need to trigger renegotiation
+    // Only create an offer if the connection is stable AND signaling state is stable
+    if (pc.ConnectionState() == webrtc.PeerConnectionStateConnected || pc.ConnectionState() == webrtc.PeerConnectionStateConnecting) && pc.SignalingState() == webrtc.SignalingStateStable {
+        sfuLogger.Debug("WEBRTC", "Connection/signaling stable, triggering renegotiation", map[string]interface{}{
+            "trackID":         trackLocal.ID(),
+            "connectionState": pc.ConnectionState().String(),
+            "signalingState":  pc.SignalingState().String(),
+        })
 
-	err = pc.SetLocalDescription(offer)
-	if err != nil {
-		sfuLogger.Error("WEBRTC", "Error setting local description for renegotiation", err, map[string]interface{}{
-			"trackID": trackLocal.ID(),
-		})
-		sfuState.IncrementCounters(0, 0, 1)
-		return
-	}
-
-	// Find the client ID for this PeerConnection and send the offer
-	// We need to find which client this PeerConnection belongs to
-	meetingsMu.RLock()
-	for _, meeting := range meetings {
-		meeting.mu.RLock()
-		for clientID, clientPeer := range meeting.clients {
-			if clientPeer.PeerConnection == pc {
-				// We don't have the replyTo topic here. This is a renegotiation initiated by the SFU.
-				// The response should go to the main topic, and the signaling server will need to handle it.
-				// In the future, we could store the replyTo topic in the ClientPeer struct.
-				sendSFUSignalToClient(clientID, "offer", offer.SDP, nil, meeting.ID, replyTo)
-				meeting.mu.RUnlock()
-				meetingsMu.RUnlock()
-
-				sfuLogger.Info("WEBRTC", "Sent renegotiation offer to client", map[string]interface{}{
-					"clientID":  clientID,
-					"meetingID": meeting.ID,
-					"trackID":   trackLocal.ID(),
-					"offerSDP":  offer.SDP[:100] + "...", // Log first 100 chars of SDP
-				})
-				return
-			}
+		// Trigger renegotiation by creating and sending an offer
+		offer, err := pc.CreateOffer(nil)
+		if err != nil {
+			sfuLogger.Error("WEBRTC", "Error creating offer for renegotiation", err, map[string]interface{}{
+				"trackID": trackLocal.ID(),
+			})
+			sfuState.IncrementCounters(0, 0, 1)
+			return
 		}
-		meeting.mu.RUnlock()
-	}
-	meetingsMu.RUnlock()
 
-	sfuLogger.Warn("WEBRTC", "Could not find client for PeerConnection", map[string]interface{}{
-		"trackID":   trackLocal.ID(),
-		"trackKind": trackLocal.Kind().String(),
-	})
+		err = pc.SetLocalDescription(offer)
+		if err != nil {
+			sfuLogger.Error("WEBRTC", "Error setting local description for renegotiation", err, map[string]interface{}{
+				"trackID": trackLocal.ID(),
+			})
+			sfuState.IncrementCounters(0, 0, 1)
+			return
+		}
+
+		// Find the client ID for this PeerConnection and send the offer
+		meetingsMu.RLock()
+		for _, meeting := range meetings {
+			meeting.mu.RLock()
+			for clientID, clientPeer := range meeting.clients {
+				if clientPeer.PeerConnection == pc {
+					sendSFUSignalToClient(clientID, "offer", offer.SDP, nil, meeting.ID, clientPeer.ReplyTo)
+					meeting.mu.RUnlock()
+					meetingsMu.RUnlock()
+
+					sfuLogger.Info("WEBRTC", "Sent renegotiation offer to client", map[string]interface{}{
+						"clientID":  clientID,
+						"meetingID": meeting.ID,
+						"trackID":   trackLocal.ID(),
+						"offerSDP":  offer.SDP[:100] + "...", // Log first 100 chars of SDP
+					})
+					return
+				}
+			}
+			meeting.mu.RUnlock()
+		}
+		meetingsMu.RUnlock()
+
+        sfuLogger.Warn("WEBRTC", "Could not find client for PeerConnection", map[string]interface{}{
+            "trackID":   trackLocal.ID(),
+            "trackKind": trackLocal.Kind().String(),
+        })
+    } else {
+        sfuLogger.Debug("WEBRTC", "Connection/signaling not stable, deferring renegotiation", map[string]interface{}{
+            "trackID":         trackLocal.ID(),
+            "connectionState": pc.ConnectionState().String(),
+            "signalingState":  pc.SignalingState().String(),
+        })
+        // Mark renegotiation pending for this peer so we retry when signaling becomes stable
+        meetingsMu.RLock()
+        for _, mtg := range meetings {
+            mtg.mu.RLock()
+            for _, cpeer := range mtg.clients {
+                if cpeer.PeerConnection == pc {
+                    cpeer.RenegotiatePending = true
+                    mtg.mu.RUnlock()
+                    meetingsMu.RUnlock()
+                    sfuLogger.Debug("WEBRTC", "Marked renegotiation as pending for client", map[string]interface{}{})
+                    return
+                }
+            }
+            mtg.mu.RUnlock()
+        }
+        meetingsMu.RUnlock()
+    }
 }

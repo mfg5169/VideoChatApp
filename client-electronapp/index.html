@@ -45,44 +45,37 @@
   </div>
 
   <script>
-    // TEST: Basic console test for main index.html
     console.log('🚀 MAIN INDEX.HTML LOADED - Console test');
     console.log('🚀 Current time:', new Date().toISOString());
     console.log('🚀 Current URL:', window.location.href);
     
     const DockerUrl = 'http://localhost:8081';
     
-    // Check authentication status and redirect accordingly
     async function checkAuthAndRedirect() {
       console.log('🔍 Checking authentication and redirecting...');
       try {
-        // Check if user is authenticated by looking for auth token
+
         const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
         const userData = localStorage.getItem('userData');
         
         console.log('🔍 Auth check - Token exists:', !!token);
         console.log('🔍 Auth check - User data exists:', !!userData);
         
-        // Add a small delay to show loading state
         await new Promise(resolve => setTimeout(resolve, 1000));
         
         if (token && userData) {
-          // User is authenticated, redirect to home
           console.log('🔍 User authenticated, redirecting to home');
           window.location.href = './home/index.html';
         } else {
-          // User is not authenticated, redirect to signin
           console.log('🔍 User not authenticated, redirecting to signin');
           window.location.href = './auth/signin/index.html';
         }
       } catch (error) {
         console.error('❌ Error checking authentication:', error);
-        // On error, redirect to signin as fallback
         window.location.href = './auth/signin/index.html';
       }
     }
 
-    // Alternative method using fetch to check with backend
     async function checkAuthWithBackend() {
       try {
         const response = await fetch(`${DockerUrl}/api/auth/verify`, {
@@ -95,26 +88,20 @@
         });
 
         if (response.ok) {
-          // User is authenticated
           window.location.href = './home/index.html';
         } else {
-          // User is not authenticated
           window.location.href = './auth/signin/index.html';
         }
       } catch (error) {
         console.error('Error checking authentication with backend:', error);
-        // Fallback to local storage check
         checkAuthAndRedirect();
       }
     }
 
-    // Start the authentication check when page loads
     document.addEventListener('DOMContentLoaded', function() {
-      // Try backend check first, fallback to local storage check
       checkAuthWithBackend();
     });
 
-    // Fallback: if backend check fails, use local storage check
     setTimeout(() => {
       if (window.location.pathname.includes('index.html')) {
         checkAuthAndRedirect();

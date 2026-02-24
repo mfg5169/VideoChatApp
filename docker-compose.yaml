@@ -173,7 +173,7 @@ services:
       REDIS_URL: redis://redis-node-1:6379
       # List of Signaling Servers for the Orchestration Service to choose from
       # These are external URLs that clients will use to connect
-      SIGNALING_SERVER_URLS: ws://localhost:8080,ws://localhost:8085
+      SIGNALING_SERVER_URLS: ws://localhost:8080 #,ws://localhost:8085
       INSTANCE_NAME: Orchestration-Service
     networks:
       - webrtc-net
@@ -193,8 +193,8 @@ services:
         condition: service_started
       signaling-server-1:
         condition: service_started
-      signaling-server-2:
-        condition: service_started
+      # signaling-server-2:
+      #   condition: service_started
 
   # Multiple Signaling Server Instances (Node.js)
   signaling-server-1:
@@ -230,36 +230,36 @@ services:
         condition: service_started
 
 
-  signaling-server-2:
-    build:
-      context: .
-      dockerfile: server/signaling/DockerFile
-    ports:
-      - "8085:8080" # Expose on a different port for clients
-    environment:
-      REDIS_CLUSTER_NODES: redis-node-1:6379,redis-node-2:6379,redis-node-3:6379,redis-node-4:6379,redis-node-5:6379,redis-node-6:6379
-      REDIS_SFU_CLUSTER_NODES: redis-sfu-1:6379,redis-sfu-2:6379,redis-sfu-3:6379,redis-sfu-4:6379,redis-sfu-5:6379,redis-sfu-6:6379
+  # signaling-server-2:
+  #   build:
+  #     context: .
+  #     dockerfile: server/signaling/DockerFile
+  #   ports:
+  #     - "8085:8080" # Expose on a different port for clients
+  #   environment:
+  #     REDIS_CLUSTER_NODES: redis-node-1:6379,redis-node-2:6379,redis-node-3:6379,redis-node-4:6379,redis-node-5:6379,redis-node-6:6379
+  #     REDIS_SFU_CLUSTER_NODES: redis-sfu-1:6379,redis-sfu-2:6379,redis-sfu-3:6379,redis-sfu-4:6379,redis-sfu-5:6379,redis-sfu-6:6379
 
-      REDIS_URL: redis://redis-node-1:6379
-      SIGNALING_SERVER_ID: sig-beta 
-      EXTERNAL_WS_URL: ws://localhost:8085
-      INSTANCE_NAME: Signaling-Server-2
-    networks:
-      - webrtc-net
-      - kafka-cluster
-    depends_on:
-      redis-cluster-setup:
-        condition: service_completed_successfully
-      redis-sfu-cluster-setup:
-        condition: service_completed_successfully
-      kafka1:
-        condition: service_started
-      kafka2:
-        condition: service_started
-      kafka3:
-        condition: service_started
-      zookeeper:
-        condition: service_started
+  #     REDIS_URL: redis://redis-node-1:6379
+  #     SIGNALING_SERVER_ID: sig-beta 
+  #     EXTERNAL_WS_URL: ws://localhost:8085
+  #     INSTANCE_NAME: Signaling-Server-2
+  #   networks:
+  #     - webrtc-net
+  #     - kafka-cluster
+  #   depends_on:
+  #     redis-cluster-setup:
+  #       condition: service_completed_successfully
+  #     redis-sfu-cluster-setup:
+  #       condition: service_completed_successfully
+  #     kafka1:
+  #       condition: service_started
+  #     kafka2:
+  #       condition: service_started
+  #     kafka3:
+  #       condition: service_started
+  #     zookeeper:
+  #       condition: service_started
 
 
   # SFU Instances (Go)

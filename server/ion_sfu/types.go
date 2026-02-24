@@ -86,9 +86,11 @@ type MeetingMetadata struct {
 
 // ClientPeer represents a WebRTC peer connection for a client connected to this SFU
 type ClientPeer struct {
-	ID                string
-	MeetingID         string
-	PeerConnection    *webrtc.PeerConnection
-	mu                sync.Mutex                // Protects PeerConnection state
-	pendingCandidates []webrtc.ICECandidateInit // Buffer for ICE candidates received before remote description is set
+    ID                string
+    MeetingID         string
+    PeerConnection    *webrtc.PeerConnection
+    ReplyTo           string                    // Kafka topic to send responses to
+    mu                sync.Mutex                // Protects PeerConnection state
+    pendingCandidates []webrtc.ICECandidateInit // Buffer for ICE candidates received before remote description is set
+    RenegotiatePending bool                     // Flag indicating a renegotiation should happen when signaling is stable
 }

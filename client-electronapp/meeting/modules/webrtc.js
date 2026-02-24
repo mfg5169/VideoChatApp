@@ -5,12 +5,18 @@ class WebRTCManager {
     this.remoteIceCandidates = [];
     this.stunServers = [{ urls: 'stun:stun.l.google.com:19302' }];
     this.localStream = null;
+    this.signalingManager = null; // Add reference to signaling manager
     this.onTrackCallback = null;
     this.onConnectionStateChangeCallback = null;
     this.onNegotiationNeededCallback = null;
     this.onIceCandidateCallback = null;
+    this.isNegotiating = false; // Flag to prevent glare
   }
 
+  setSignalingManager(manager) {
+    this.signalingManager = manager;
+  }
+  
   setCallbacks(callbacks) {
     this.onTrackCallback = callbacks.onTrack;
     this.onConnectionStateChangeCallback = callbacks.onConnectionStateChange;
@@ -146,6 +152,13 @@ class WebRTCManager {
 
     // Negotiation needed handling
     this.peerConnection.onnegotiationneeded = async () => {
+      if (this.isNegotiating) {
+        if (window.Logger) {
+          window.Logger.warn('WEBRTC', 'Negotiation already in progress, skipping redundant onnegotiationneeded event');
+        }
+        return;
+      }
+      this.isNegotiating = true;
       if (window.Logger) {
         window.Logger.info('WEBRTC', 'Negotiation needed, creating offer');
       }
@@ -153,6 +166,7 @@ class WebRTCManager {
       if (this.onNegotiationNeededCallback) {
         await this.onNegotiationNeededCallback();
       }
+      this.isNegotiating = false;
     };
   }
 
@@ -203,16 +217,18 @@ class WebRTCManager {
         await this.peerConnection.setRemoteDescription(new RTCSessionDescription(message.payload));
         const answer = await this.peerConnection.createAnswer();
         await this.peerConnection.setLocalDescription(answer);
-        await this.processBufferedCandidates();
         
-        if (this.onIceCandidateCallback) {
-          this.onIceCandidateCallback({ type: 'answer', sdp: answer.sdp });
+        // This was incorrect. The signaling manager needs to be called directly.
+        // The answer SDP should also be sent with the correct type.
+        if (this.signalingManager) { // This check is just to be safe
+          this.signalingManager.sendAnswer(answer.sdp); // Correctly send the answer
         }
         
         if (window.Logger) {
           window.Logger.info('WEBRTC', 'Renegotiation answer sent to SFU');
         }
-        
+        await this.processBufferedCandidates();
+
       } else if (message.type === 'candidate') {
         if (window.Logger) {
           window.Logger.info('WEBRTC_INCOMING', 'Processing CANDIDATE from SFU', { payload: message.payload });

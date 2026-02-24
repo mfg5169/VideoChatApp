@@ -1,0 +1,64 @@
+metadata:
+  name: "example-transformer"
+  version: "1.0.0"
+  description: "Example Transformer model configuration"
+  author: "Model Runtime"
+  license: "MIT"
+  task: "text-generation"
+
+architecture: transformer
+
+hyperparameters:
+  vocab_size: 50257
+  hidden_size: 768
+  num_attention_heads: 12
+  num_layers: 12
+  intermediate_size: 3072
+  max_position_embeddings: 512
+
+layers:
+  - layer_type: "embedding"
+    name: "token_embeddings"
+    input_dims: [50257]
+    output_dims: [768]
+    params:
+      embedding_dim: 768
+
+  - layer_type: "attention"
+    name: "layers.0.attention"
+    input_dims: [768]
+    output_dims: [768]
+    params:
+      num_heads: 12
+      head_dim: 64
+
+  - layer_type: "feed_forward"
+    name: "layers.0.feed_forward"
+    input_dims: [768]
+    output_dims: [768]
+    params:
+      intermediate_size: 3072
+
+weights:
+  - path: "model.safetensors"
+    format: "safetensors"
+    checksum: null
+
+tokenizer:
+  tokenizer_type: "bpe"
+  vocab_file: "vocab.json"
+  merges_file: "merges.txt"
+  special_tokens:
+    bos_token: 50256
+    eos_token: 50256
+    pad_token: 50257
+
+preprocessing:
+  normalization:
+    mean: [0.0]
+    std: [1.0]
+
+postprocessing:
+  output_format: "logits"
+  confidence_threshold: 0.5
+

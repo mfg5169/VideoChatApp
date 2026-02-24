@@ -1,0 +1,213 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Mock Interview Voice Test</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="p-6 space-y-4">
+    <div class="space-y-2">
+      <div class="text-xl font-semibold">Voice Loop Test</div>
+      <div class="text-sm text-gray-600">When unmuted, rolling windows are sent only while you speak (VAD). After silence, one final send. No sends when idle.</div>
+    </div>
+
+    <div class="flex gap-2">
+      <button id="muteBtn" class="px-4 py-2 rounded bg-gray-400 text-white font-medium">Unmute (mic off)</button>
+      <button id="ttsBtn" class="px-4 py-2 rounded bg-gray-200">Speak Text</button>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <div class="font-medium mb-1">Transcript (live)</div>
+        <textarea id="transcript" class="w-full h-40 p-2 border rounded" readonly></textarea>
+      </div>
+      <div>
+        <div class="font-medium mb-1">Text to Speak</div>
+        <textarea id="speakText" class="w-full h-40 p-2 border rounded">Tell me about a project you're proud of.</textarea>
+      </div>
+    </div>
+
+    <audio id="player" controls class="w-full"></audio>
+
+    <script>
+      const API_BASE = "http://127.0.0.1:8000";
+
+      const TIMESLICE_MS = 250;
+      const ROLLING_MS = 5000;
+      const SEND_EVERY_MS = 2000;
+      const MIN_SEND_BYTES = 2000;
+
+      let sharedMicStream = null;
+      let mediaRecorder = null;
+      let isMuted = true;
+      let audioChunks = [];
+      let sendTimer = null;
+      let liveTranscript = "";
+
+      const MIME_TYPE = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+        ? "audio/webm;codecs=opus"
+        : "";
+
+      async function ensureMicStream() {
+        if (sharedMicStream) {
+          const active = sharedMicStream.getTracks().some(t => t.readyState === "live");
+          if (active) return sharedMicStream;
+          sharedMicStream = null;
+        }
+        sharedMicStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        return sharedMicStream;
+      }
+
+      function releaseMic() {
+        if (sharedMicStream) {
+          sharedMicStream.getTracks().forEach(t => t.stop());
+          sharedMicStream = null;
+        }
+      }
+
+      function nowMs() {
+        return performance.now();
+      }
+
+      function mergeBySuffixPrefix(prev, next) {
+        prev = (prev || "").trim();
+        next = (next || "").trim();
+        if (!next) return prev;
+        if (!prev) return next;
+        // Normalize prev by stripping trailing sentence punctuation so overlap matches
+        const normalizedPrev = prev.replace(/\s*[.!?]+$/, "");
+        // Case-insensitive "next extends prev" check
+        if (next.length >= normalizedPrev.length && next.toLowerCase().startsWith(normalizedPrev.toLowerCase())) return next;
+        const maxLen = Math.min(normalizedPrev.length, next.length);
+        for (let k = maxLen; k >= 10; k--) {
+          // Case-insensitive overlap so "this thing works" matches "This thing works"
+          if (normalizedPrev.slice(-k).toLowerCase() === next.slice(0, k).toLowerCase()) {
+            // Use next's casing for the overlapping tail: prev-without-overlap + full next
+            const prevWithoutOverlap = normalizedPrev.slice(0, -k).trim();
+            return (prevWithoutOverlap ? prevWithoutOverlap + " " + next : next).trim();
+          }
+        }
+        return (normalizedPrev + " " + next).trim();
+      }
+
+      async function sendRollingWindow(forceLonger = false) {
+        if (!audioChunks.length) return;
+        if (!mediaRecorder || mediaRecorder.state !== "recording") return;
+
+        const rollingMs = forceLonger ? 6000 : ROLLING_MS;
+        const cutoff = nowMs() - rollingMs;
+        const first = audioChunks.length > 0 ? [audioChunks[0].blob] : [];
+        const rest = audioChunks.slice(1).filter(x => x.t >= cutoff).map(x => x.blob);
+        const blobs = [...first, ...rest];
+        if (blobs.length < 2) return;
+
+        const combined = new Blob(blobs, { type: mediaRecorder.mimeType || "audio/webm" });
+        if (combined.size < MIN_SEND_BYTES) return;
+
+        const ext = combined.type.includes("webm") ? "webm" : "dat";
+        const fd = new FormData();
+        fd.append("audio", new File([combined], `rolling.${ext}`, { type: combined.type }));
+
+        try {
+          const res = await fetch(`${API_BASE}/stt_partial?language=en`, { method: "POST", body: fd });
+          if (!res.ok) return;
+          const data = await res.json();
+          const partial = (data.text || "").trim();
+          if (!partial) return;
+          liveTranscript = mergeBySuffixPrefix(liveTranscript, partial);
+          document.getElementById("transcript").value = liveTranscript;
+        } catch (e) {
+          console.error("stt_partial error:", e);
+        }
+      }
+
+      async function startPartialRecording() {
+        audioChunks = [];
+        liveTranscript = "";
+        document.getElementById("transcript").value = "";
+
+        const stream = await ensureMicStream();
+        mediaRecorder = new MediaRecorder(stream, MIME_TYPE ? { mimeType: MIME_TYPE } : undefined);
+
+        mediaRecorder.ondataavailable = (e) => {
+          if (!e.data || e.data.size === 0) return;
+          audioChunks.push({ t: nowMs(), blob: e.data });
+          const cutoff = nowMs() - ROLLING_MS;
+          while (audioChunks.length > 1 && audioChunks[1].t < cutoff) {
+            audioChunks.splice(1, 1);
+          }
+        };
+
+        mediaRecorder.start(TIMESLICE_MS);
+
+        sendTimer = setInterval(() => {
+          sendRollingWindow().catch(console.error);
+        }, SEND_EVERY_MS);
+      }
+
+      async function stopPartialRecording(finalPass = true) {
+        if (sendTimer) {
+          clearInterval(sendTimer);
+          sendTimer = null;
+        }
+        if (mediaRecorder && mediaRecorder.state !== "inactive") {
+          mediaRecorder.stop();
+        }
+        if (finalPass && audioChunks.length) {
+          await sendRollingWindow(true);
+        }
+      }
+
+      async function unmute() {
+        if (!isMuted) return;
+        isMuted = false;
+        updateMuteButton();
+        await startPartialRecording().catch(e => {
+          alert(e);
+          isMuted = true;
+          updateMuteButton();
+        });
+      }
+
+      function mute() {
+        if (isMuted) return;
+        isMuted = true;
+        updateMuteButton();
+        stopPartialRecording(true).catch(console.error);
+      }
+
+      function updateMuteButton() {
+        const btn = document.getElementById("muteBtn");
+        if (isMuted) {
+          btn.textContent = "Unmute (mic off)";
+          btn.className = "px-4 py-2 rounded bg-gray-400 text-white font-medium";
+        } else {
+          btn.textContent = "Mute (mic on)";
+          btn.className = "px-4 py-2 rounded bg-red-500 text-white font-medium";
+        }
+      }
+
+      async function speakText() {
+        const text = document.getElementById("speakText").value.trim();
+        if (!text) return;
+        const res = await fetch(`${API_BASE}/tts`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text, length_scale: 0.94 }),
+        });
+        if (!res.ok) throw new Error(await res.text());
+        const blob = new Blob([await res.arrayBuffer()], { type: "audio/wav" });
+        const player = document.getElementById("player");
+        player.src = URL.createObjectURL(blob);
+        await player.play();
+      }
+
+      document.getElementById("muteBtn").addEventListener("click", () => {
+        if (isMuted) unmute();
+        else mute();
+      });
+      document.getElementById("ttsBtn").addEventListener("click", () => speakText().catch(e => alert(e)));
+      window.addEventListener("beforeunload", () => { stopPartialRecording(false); releaseMic(); });
+    </script>
+  </body>
+</html>

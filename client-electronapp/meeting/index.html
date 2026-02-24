@@ -72,7 +72,7 @@
   </style>
 </head>
 <body class="bg-gray-900 text-white h-screen overflow-hidden">
-  <!-- Header -->
+
   <header class="bg-gray-800 border-b border-gray-700 px-4 py-3 flex items-center justify-between">
     <div class="flex items-center space-x-4">
       <button onclick="goBack()" class="text-gray-400 hover:text-white">
@@ -108,14 +108,12 @@
     </div>
   </header>
 
-  <!-- Main Content -->
+
   <div class="flex h-full">
-    <!-- Video Area -->
     <div class="flex-1 flex flex-col">
-      <!-- Main Video Grid -->
+
       <div class="flex-1 p-4">
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 h-full" id="videoGrid">
-          <!-- Main participant video -->
           <div class="video-container col-span-1 md:col-span-2 lg:col-span-2 xl:col-span-3">
             <video id="mainVideo" autoplay playsinline muted class="w-full h-full object-cover"></video>
             <div class="video-overlay">
@@ -132,47 +130,37 @@
             </div>
           </div>
           
-          <!-- Remote participants will be dynamically added here -->
           <div id="remoteVideosContainer" class="col-span-1 md:col-span-2 lg:col-span-2 xl:col-span-1">
-            <!-- Remote videos will be dynamically inserted here -->
           </div>
         </div>
       </div>
 
-      <!-- Control Bar -->
       <div class="bg-gray-800 border-t border-gray-700 px-6 py-4">
         <div class="flex items-center justify-center space-x-4">
-          <!-- Audio Control -->
           <button id="audioBtn" onclick="toggleAudio()" class="control-button primary">
             <i class="fas fa-microphone text-lg"></i>
           </button>
           
-          <!-- Video Control -->
           <button id="videoBtn" onclick="toggleVideo()" class="control-button primary">
             <i class="fas fa-video text-lg"></i>
           </button>
           
-          <!-- Screen Share -->
           <button id="screenShareBtn" onclick="toggleScreenShare()" class="control-button secondary">
             <i class="fas fa-desktop text-lg"></i>
           </button>
           
-          <!-- Chat -->
           <button onclick="toggleChat()" class="control-button secondary">
             <i class="fas fa-comment text-lg"></i>
           </button>
           
-          <!-- Participants -->
           <button onclick="toggleParticipants()" class="control-button secondary">
             <i class="fas fa-users text-lg"></i>
           </button>
           
-          <!-- More Options -->
           <button onclick="toggleMoreOptions()" class="control-button secondary">
             <i class="fas fa-ellipsis-h text-lg"></i>
           </button>
           
-          <!-- Leave Meeting -->
           <button onclick="leaveMeeting()" class="control-button danger">
             <i class="fas fa-phone-slash text-lg"></i>
           </button>
@@ -180,9 +168,7 @@
       </div>
     </div>
 
-    <!-- Sidebar -->
     <div id="sidebar" class="sidebar w-80 bg-gray-800 border-l border-gray-700 flex flex-col">
-      <!-- Sidebar Header -->
       <div class="p-4 border-b border-gray-700">
         <div class="flex items-center justify-between">
           <h3 id="sidebarTitle" class="text-lg font-semibold">Chat</h3>
@@ -192,15 +178,11 @@
         </div>
       </div>
 
-      <!-- Sidebar Content -->
       <div class="flex-1 overflow-hidden">
-        <!-- Chat Section -->
         <div id="chatSection" class="h-full flex flex-col">
           <div class="flex-1 overflow-y-auto p-4 space-y-4" id="chatMessages">
-            <!-- Chat messages will be dynamically added here -->
           </div>
           
-          <!-- Chat Input -->
           <div class="p-4 border-t border-gray-700">
             <div class="flex space-x-2">
               <input type="text" id="chatInput" placeholder="Type a message..." 
@@ -212,20 +194,17 @@
           </div>
         </div>
 
-        <!-- Participants Section -->
         <div id="participantsSection" class="h-full hidden">
           <div class="flex-1 overflow-y-auto p-4 space-y-3" id="participantsList">
-            <!-- Participants will be dynamically added here -->
+
           </div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Screen Share Video (Hidden by default) -->
   <video id="screenVideo" autoplay playsinline class="hidden w-full h-full object-contain bg-black"></video>
 
-  <!-- Settings Modal -->
   <div id="settingsModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
     <div class="flex items-center justify-center min-h-screen p-4">
       <div class="bg-gray-800 rounded-xl p-6 w-full max-w-md">
@@ -265,7 +244,6 @@
     </div>
   </div>
 
-  <!-- Load modular components -->
   <script src="modules/logger.js"></script>
   <script src="modules/state.js"></script>
   <script src="modules/webrtc.js"></script>
